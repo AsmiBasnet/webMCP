@@ -1,7 +1,7 @@
 // Network layer. Every call records where it came from and how fresh it is,
 // because every figure this app shows must carry its provenance.
 
-import { PROXY, DIRECT_HOSTS, BIPAD, GDACS, OPENMETEO } from "./config.js";
+import { PROXY, DIRECT_HOSTS, BIPAD, GDACS, OPENMETEO, NEPAL } from "./config.js";
 
 const memo = new Map();          // url -> { at, data }
 const MEMO_TTL = 120_000;        // BIPAD has no SLA; don't hammer it.
@@ -146,12 +146,29 @@ export async function floodForecast(lat, lon, days = 14) {
   return getJSON(url, { snapshotKey: "forecast" });
 }
 
-/** BIPAD/GDACS return GeoJSON [lon, lat]. Leaflet wants [lat, lon]. Flip once, here. */
+const [[S, W], [N, E]] = NEPAL.maxBounds;
+const inNepal = (lat, lon) => lat >= S && lat <= N && lon >= W && lon <= E;
+
+/**
+ * BIPAD/GDACS return GeoJSON [lon, lat]. Leaflet wants [lat, lon]. Flip once, here.
+ *
+ * At least one record in the gauge register — "Roshi Khola at Kavre" — is
+ * published the other way round, as [lat, lon]. Flipped again it lands at
+ * 85.7 N, in the Arctic Ocean, which is a valid latitude and so survives every
+ * range check; on a map it drags the viewport off the country entirely.
+ *
+ * So the flip is verified rather than assumed: if the result falls outside
+ * Nepal and the un-flipped pair falls inside it, the source transposed that
+ * record and the un-flipped pair is returned. Points legitimately outside
+ * Nepal (a GDACS event centred over Tibet, say) are untouched, because
+ * swapping them would not put them inside either.
+ */
 export function latlng(point) {
   const c = point?.coordinates;
   if (!Array.isArray(c) || c.length < 2) return null;
   const [lon, lat] = c;
   if (typeof lat !== "number" || typeof lon !== "number") return null;
+  if (!inNepal(lat, lon) && inNepal(lon, lat)) return [lon, lat];
   return [lat, lon];
 }
 

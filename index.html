@@ -3,740 +3,108 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SankatSathi — Nepal flood response: help, missing persons, and how to give</title>
-<meta name="description" content="One place for the 2026 Nepal flood: emergency numbers, how to register a missing person, where relief camps are, what support victims are entitled to, and the only lawful ways to donate.">
+<title>SankatSathi — live disaster data for Nepal, from five sources</title>
+<meta name="description" content="Incidents, river gauges, road closures, GDACS alerts and GloFAS forecasts for Nepal in one filterable live view. Every record carries its source and its age.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="relief.css">
+<link rel="stylesheet" href="dash.css">
 <script>document.documentElement.className="js"</script>
 </head>
 
 <body>
 
-<header class="masthead">
-  <div class="wrap masthead-inner">
-    <h1 class="wordmark">SankatSathi <span class="np">संकट साथी</span></h1>
-    <p class="tagline">Everything a person needs in one place after the Bhote&nbsp;Koshi flood — and nothing they don't.</p>
-    <a class="masthead-link" href="explore.html">Explore the data →</a>
-  </div>
+<header>
+  <h1 class="wordmark">SankatSathi <span>संकट साथी</span></h1>
+  <p class="sub">Live disaster data for Nepal — incidents, gauges, roads, alerts and forecasts in one view.</p>
+  <a class="link" href="explore.html">Ask it questions →</a>
 </header>
 
-<div class="band" id="band-wrap">
-  <div class="wrap band-inner" id="band">
-    <span><span class="pulse"></span>Loading live river and road conditions…</span>
+<!-- Per-source freshness. Rendered by dash.js; never hidden, never collapsed. -->
+<div id="status">Loading…</div>
+
+<div class="filters">
+  <div class="fgroup">
+    <span class="flabel">Source</span>
+    <span id="f-sources"></span>
   </div>
-  <noscript>
-    <div class="wrap band-inner">
-      <span>Live river and road conditions need JavaScript. Everything below works without it.</span>
-    </div>
-  </noscript>
+
+  <div class="fgroup">
+    <span class="flabel">Severity</span>
+    <span id="f-sev"></span>
+  </div>
+
+  <div class="fgroup">
+    <label class="flabel" for="f-days">Window</label>
+    <select id="f-days">
+      <option value="1">24 hours</option>
+      <option value="3">3 days</option>
+      <option value="7" selected>7 days</option>
+      <option value="30">30 days</option>
+      <option value="90">90 days</option>
+    </select>
+  </div>
+
+  <div class="fgroup">
+    <label class="flabel" for="f-district">District</label>
+    <select id="f-district"></select>
+  </div>
+
+  <div class="fgroup">
+    <label class="flabel" for="f-kind">Type</label>
+    <select id="f-kind"></select>
+  </div>
+
+  <div class="fgroup">
+    <label class="flabel" for="f-sort">Sort</label>
+    <select id="f-sort">
+      <option value="severity" selected>Severity</option>
+      <option value="time">Most recent</option>
+    </select>
+  </div>
+
+  <div class="fgroup">
+    <input type="search" id="f-search" placeholder="Search titles, places…" aria-label="Search records">
+  </div>
+
+  <span class="spacer"></span>
+  <span id="count"></span>
+  <button type="button" class="act" id="reset">Reset</button>
+  <button type="button" class="act" id="refresh">Refresh</button>
 </div>
 
 <main>
-
-<!-- ===================================================================== -->
-<div class="wrap">
-  <section class="hero" style="border:0">
-    <p class="eyebrow">Disaster zone declared · three months · 26 August 2026</p>
-    <h1>768 people are dead. 2,502 are still missing.</h1>
-    <p class="lede">
-      On the morning of 26 August a glacier collapsed on Langtang Lirung and sent a wall of ice, water
-      and rock down 72 kilometres of the Trishuli. It reached the border in seven minutes. This page is
-      what to do about it — whether you are living through it, searching for someone, or trying to help
-      from somewhere else.
-    </p>
-
-    <div class="doors">
-      <a class="door" href="#affected">
-        <span class="door-label">If this happened to you</span>
-        <span class="door-title">I need help</span>
-        <span class="door-ne">मलाई सहयोग चाहियो</span>
-        <span class="door-note">Emergency numbers, relief camps, medical care, and what the state owes you.</span>
-      </a>
-      <a class="door" href="#missing">
-        <span class="door-label">If someone is unaccounted for</span>
-        <span class="door-title">I'm looking for someone</span>
-        <span class="door-ne">म कसैलाई खोज्दै छु</span>
-        <span class="door-note">How to file a record that actually counts, and who to call from abroad.</span>
-      </a>
-      <a class="door" href="#help">
-        <span class="door-label">If you want to give</span>
-        <span class="door-title">I want to help</span>
-        <span class="door-ne">म सहयोग गर्न चाहन्छु</span>
-        <span class="door-note">The one lawful channel, where to drop supplies, and how to spot a fake appeal.</span>
-      </a>
-    </div>
+  <section class="pane pane--list" aria-label="Records">
+    <div id="rows"></div>
   </section>
-</div>
 
-<!-- ===================================================================== -->
-<div class="wrap">
-<section id="affected">
-  <div class="sec-head">
-    <span class="sec-num">01</span>
-    <h2>If you are in danger right now <span class="ne">तपाईं अहिले खतरामा हुनुहुन्छ भने</span></h2>
-    <p class="sec-sub">
-      Call first. These are free from any phone in Nepal, including a phone with no credit and no SIM
-      registration. Tap a number to dial it.
-    </p>
-  </div>
-
-  <div class="calls">
-    <a class="call call--primary" href="tel:100">
-      <span class="call-num">100</span>
-      <span class="call-what">Nepal Police</span>
-      <span class="call-ne">नेपाल प्रहरी</span>
-      <span class="call-note">Also the number that creates a formal missing-person record.</span>
-    </a>
-    <a class="call call--primary" href="tel:112">
-      <span class="call-num">112</span>
-      <span class="call-what">Police, from any mobile</span>
-      <span class="call-ne">मोबाइलबाट प्रहरी</span>
-      <span class="call-note">Works without credit or a registered SIM.</span>
-    </a>
-    <a class="call call--primary" href="tel:102">
-      <span class="call-num">102</span>
-      <span class="call-what">Ambulance</span>
-      <span class="call-ne">एम्बुलेन्स</span>
-    </a>
-    <a class="call call--primary" href="tel:101">
-      <span class="call-num">101</span>
-      <span class="call-what">Fire brigade</span>
-      <span class="call-ne">दमकल</span>
-    </a>
-    <a class="call call--secondary" href="tel:1234">
-      <span class="call-num">1234</span>
-      <span class="call-what">Disaster hotline</span>
-      <span class="call-ne">विपद् हटलाइन</span>
-      <span class="call-note">Routes to your district emergency centre. Use this from outside Kathmandu valley.</span>
-    </a>
-    <a class="call call--secondary" href="tel:1149">
-      <span class="call-num">1149</span>
-      <span class="call-what">National Emergency Operation Centre</span>
-      <span class="call-ne">राष्ट्रिय आपतकालीन कार्य सञ्चालन केन्द्र</span>
-      <span class="call-note">Both 1149 and 1234 are in circulation. If one does not connect, try the other.</span>
-    </a>
-    <a class="call call--secondary" href="tel:1144">
-      <span class="call-num">1144</span>
-      <span class="call-what">Tourist Police</span>
-      <span class="call-ne">पर्यटक प्रहरी</span>
-      <span class="call-note">For foreign nationals and trekking groups.</span>
-    </a>
-    <a class="call call--secondary" href="tel:1112">
-      <span class="call-num">1112</span>
-      <span class="call-what">Ministry of Home Affairs</span>
-      <span class="call-ne">गृह मन्त्रालय</span>
-      <span class="call-note">Toll free. Also +977-1-4211208 · control@moha.gov.np</span>
-    </a>
-  </div>
-
-  <div class="callout callout--danger">
-    <h4>If water is rising where you are</h4>
-    <p>
-      Move uphill, not downstream, and go now rather than gathering possessions — this flood travelled at
-      roughly 50 metres per second and reached the border crossing seven minutes after the ice fell.
-      Do not attempt to cross a flooded road or bridge on foot or by vehicle. Two barrier lakes formed
-      upstream during this event; one was assessed as a breach risk before it drained.
-    </p>
-  </div>
-</section>
-</div>
-
-<!-- ===================================================================== -->
-<div class="wrap">
-<section id="toll">
-  <div class="sec-head">
-    <span class="sec-num">02</span>
-    <h2>What happened, and how large it is <span class="ne">के भयो</span></h2>
-    <p class="sec-sub">
-      Roughly 0.2 km² of ice broke from Langtang Lirung and fell about 1.2 kilometres, melting on impact.
-      The tremor registered Ms 5.2 on seismometers worldwide. A second landslide followed three hours
-      later. Seven districts along the Trishuli were hit: Rasuwa, Nuwakot, Dhading, Gorkha, Tanahun,
-      Nawalparasi and Chitwan.
-    </p>
-  </div>
-
-  <div class="tolls">
-    <div class="toll toll--critical">
-      <div class="toll-n">768</div>
-      <div class="toll-l">confirmed dead</div>
-      <div class="toll-ne">मृत्यु</div>
-    </div>
-    <div class="toll toll--serious">
-      <div class="toll-n">2,502</div>
-      <div class="toll-l">missing in Nepal</div>
-      <div class="toll-ne">सम्पर्कविहीन</div>
-    </div>
-    <div class="toll toll--warning">
-      <div class="toll-n">1,473</div>
-      <div class="toll-l">injured</div>
-      <div class="toll-ne">घाइते</div>
-    </div>
-    <div class="toll toll--good">
-      <div class="toll-n">8,730</div>
-      <div class="toll-l">rescued alive</div>
-      <div class="toll-ne">उद्धार गरिएका</div>
-    </div>
-    <div class="toll toll--serious">
-      <div class="toll-n">~90,000</div>
-      <div class="toll-l">displaced</div>
-      <div class="toll-ne">विस्थापित</div>
-    </div>
-    <div class="toll toll--warning">
-      <div class="toll-n toll-n--sm">Rs&nbsp;200bn</div>
-      <div class="toll-l">early damage estimate</div>
-      <div class="toll-ne">क्षति अनुमान</div>
-    </div>
-  </div>
-
-  <h3>The morning of 26 August</h3>
-  <figure>
-    <div class="timeline">
-      <div class="tl-step">
-        <div class="tl-time">08:40</div>
-        <div class="tl-delta">the collapse</div>
-        <div class="tl-what">Roughly 0.2 km² of ice breaks from Langtang Lirung and falls about 1.2 km.</div>
-        <div class="tl-sub">It melts on impact. Seismometers worldwide register Ms 5.2.</div>
-      </div>
-      <div class="tl-step">
-        <div class="tl-time">08:47</div>
-        <div class="tl-delta">+ 7 minutes</div>
-        <div class="tl-what">The flood reaches the Gyirong border crossing at Rasuwagadhi.</div>
-        <div class="tl-sub">Debris moving at roughly 50 metres per second — no warning could have outrun it.</div>
-      </div>
-      <div class="tl-step">
-        <div class="tl-time">morning</div>
-        <div class="tl-delta">+ hours</div>
-        <div class="tl-what">The surge travels 72 km down the Trishuli through seven districts.</div>
-        <div class="tl-sub">Betrawati, Trishuli Bazar, Benighat, Mugling, then out onto the Chitwan plain.</div>
-      </div>
-      <div class="tl-step">
-        <div class="tl-time">11:40</div>
-        <div class="tl-delta">+ 3 hours</div>
-        <div class="tl-what">A second landslide follows, registering Ms 4.2.</div>
-        <div class="tl-sub">Two barrier lakes form upstream; one is assessed as a breach risk before draining.</div>
-      </div>
-    </div>
-    <figcaption>
-      The seven minutes between the ice falling and the water arriving at the border is why this page
-      leads with what to do afterwards rather than with how to be warned. Nothing in Nepal's warning
-      system operates on that timescale.
-    </figcaption>
-  </figure>
-
-  <h3 style="margin-top:2rem">The corridor it travelled</h3>
-  <figure>
-    <div id="corridor-map"></div>
-    <div class="legend">
-      <span><i class="swatch swatch--line"></i> the flood’s path down the Trishuli</span>
-      <span><i class="swatch" style="background:#d03b3b"></i> district, sized by deaths recorded there</span>
-      <span><i class="swatch" style="background:#fab219"></i> where the ice fell</span>
-    </div>
-    <figcaption>
-      District circles are scaled by the square root of the death toll, so area — not radius — carries
-      the count. Positions are district centroids, not the location of individual deaths. Basemap Esri;
-      the corridor is drawn from the reported route, not from a surveyed inundation boundary.
-    </figcaption>
-  </figure>
-
-  <h3 style="margin-top:2rem">Deaths by district</h3>
-  <div class="bars">
-    <div class="bar-row">
-      <span class="bar-name">Chitwan<span class="ne">चितवन</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:100%"></span></span>
-      <span class="bar-n">264</span>
-    </div>
-    <div class="bar-row">
-      <span class="bar-name">Nawalparasi East<span class="ne">नवलपरासी पूर्व</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:73.5%"></span></span>
-      <span class="bar-n">194</span>
-    </div>
-    <div class="bar-row">
-      <span class="bar-name">Nawalparasi West<span class="ne">नवलपरासी पश्चिम</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:37.9%"></span></span>
-      <span class="bar-n">100</span>
-    </div>
-    <div class="bar-row">
-      <span class="bar-name">Gorkha<span class="ne">गोरखा</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:22%"></span></span>
-      <span class="bar-n">58</span>
-    </div>
-    <div class="bar-row">
-      <span class="bar-name">Nuwakot<span class="ne">नुवाकोट</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:19.7%"></span></span>
-      <span class="bar-n">52</span>
-    </div>
-    <div class="bar-row">
-      <span class="bar-name">Dhading<span class="ne">धादिङ</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:18.9%"></span></span>
-      <span class="bar-n">50</span>
-    </div>
-    <div class="bar-row">
-      <span class="bar-name">Tanahun<span class="ne">तनहुँ</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:14%"></span></span>
-      <span class="bar-n">37</span>
-    </div>
-    <div class="bar-row">
-      <span class="bar-name">Rasuwa<span class="ne">रसुवा</span></span>
-      <span class="bar-track"><span class="bar-fill" style="width:4.9%"></span></span>
-      <span class="bar-n">13</span>
-    </div>
-  </div>
-
-  <h3 style="margin-top:2.2rem">How many are still unaccounted for</h3>
-  <figure>
-    <div class="ratio">
-      <div class="ratio-row">
-        <span class="ratio-label">Rescued alive<span class="ne">उद्धार गरिएका</span></span>
-        <span class="ratio-track"><span class="ratio-fill" style="width:100%;background:var(--good)"></span></span>
-        <span class="ratio-n">8,730</span>
-      </div>
-      <div class="ratio-row">
-        <span class="ratio-label">Still missing<span class="ne">सम्पर्कविहीन</span></span>
-        <span class="ratio-track"><span class="ratio-fill" style="width:28.7%;background:var(--serious)"></span></span>
-        <span class="ratio-n">2,502</span>
-      </div>
-      <div class="ratio-row">
-        <span class="ratio-label">Injured<span class="ne">घाइते</span></span>
-        <span class="ratio-track"><span class="ratio-fill" style="width:16.9%;background:var(--warning)"></span></span>
-        <span class="ratio-n">1,473</span>
-      </div>
-      <div class="ratio-row">
-        <span class="ratio-label">Confirmed dead<span class="ne">मृत्यु</span></span>
-        <span class="ratio-track"><span class="ratio-fill" style="width:8.8%;background:var(--critical)"></span></span>
-        <span class="ratio-n">768</span>
-      </div>
-    </div>
-    <figcaption>
-      Four separate counts on one scale — deliberately not stacked into a total, because they are not a
-      partition of the same population and adding them would invent a figure nobody has published.
-      The proportion that matters: <strong>for every person confirmed dead, more than three are still
-      unaccounted for.</strong> Most of those 2,502 will move into the first row or the last one, and
-      which of the two is what families calling 100 and 1234 are waiting to learn.
-    </figcaption>
-  </figure>
-
-  <div class="callout" style="margin-top:1.8rem">
-    <h4>What was destroyed</h4>
-    <ul>
-      <li><strong>41 bridges and 42 km of road</strong>, including the entire Betrawati–Rasuwagadhi corridor linking Nepal to Tibet.</li>
-      <li><strong>14 hydropower projects</strong> damaged; 431 MW taken off the national grid.</li>
-      <li><strong>20 schools</strong> across three districts, and 300+ vehicles swept from the customs yards.</li>
-      <li>On the Chinese side of the border: 16 dead and 546 missing near Gyirong.</li>
-    </ul>
-  </div>
-
-  <div class="callout callout--danger" data-captured="2026-08-30T14:29:00+05:45" style="margin-top:1.6rem">
-    <h4>These counts are not live</h4>
-    <p id="hand-entered-age">
-      Entered by hand from Nepal Police bulletin 10275, 30 August 2026 at 14:29 NPT. These counts are not
-      live and cannot be — no API publishes them. The river and road panels below this section are live;
-      these are not.
-    </p>
-    <p>
-      Counts differ between sources and are still rising: other agencies published between 734 and 800
-      deaths on the same day. Treat every number here as a floor, and check
-      <a href="https://nepalpolice.gov.np" target="_blank" rel="noopener noreferrer">nepalpolice.gov.np</a>
-      or <a href="https://ndrrma.gov.np" target="_blank" rel="noopener noreferrer">ndrrma.gov.np</a>
-      for the current bulletin.
-    </p>
-  </div>
-</section>
-</div>
-
-<!-- ===================================================================== -->
-<div class="wrap">
-<section id="support">
-  <div class="sec-head">
-    <span class="sec-num">03</span>
-    <h2>What you are entitled to <span class="ne">तपाईंले पाउने सहयोग</span></h2>
-    <p class="sec-sub">
-      The government has declared the affected area a disaster zone for three months. These are the
-      supports announced so far. Ask for them by name at your ward office.
-    </p>
-  </div>
-
-  <div class="steps">
-    <div class="step">
-      <span class="step-n">1</span>
-      <div>
-        <div class="step-t">Free medical treatment if you were injured
-          <span class="ne">घाइतेहरूलाई निःशुल्क उपचार</span></div>
-        <div class="step-b">
-          Announced for all people injured in this flood. Take yourself or the injured person to the
-          nearest health facility and state that the injury is from the Bhote Koshi flood — do not wait
-          to arrange payment first.
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <span class="step-n">2</span>
-      <div>
-        <div class="step-t">Financial assistance if your family lost someone
-          <span class="ne">मृतकका परिवारलाई आर्थिक सहायता</span></div>
-        <div class="step-b">
-          Claimed through your ward office and the District Administration Office. You will need the
-          death or missing-person record — which is why filing it formally (section 04) matters even
-          when everyone in the village already knows.
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <span class="step-n">3</span>
-      <div>
-        <div class="step-t">A place in a relief camp
-          <span class="ne">राहत शिविरमा स्थान</span></div>
-        <div class="step-b">
-          Camps are open at Trishuli Bazar (Nuwakot) and in northern Kathmandu, where a monastery is
-          sheltering roughly 500 people. Five emergency camps were established in the first week. Your
-          ward office or the nearest army or police post will direct you to the closest one with space.
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <span class="step-n">4</span>
-      <div>
-        <div class="step-t">The rehabilitation package, when it lands
-          <span class="ne">पुनर्स्थापना प्याकेज</span></div>
-        <div class="step-b">
-          The Ministry of Finance has been directed to prepare a relief and rehabilitation package for
-          affected individuals and businesses. It was not published as of 30 August. Register your
-          losses at the ward office now so you are on the list when it opens — retroactive registration
-          is usually harder.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="callout">
-    <h4>Register your losses even if nothing is being given out yet</h4>
-    <p>
-      Every compensation scheme that follows a Nepali disaster is paid against the official damage
-      assessment. The assessment is being compiled now. A household that is not in it when it closes
-      spends the following year trying to get added.
-    </p>
-  </div>
-</section>
-</div>
-
-<!-- ===================================================================== -->
-<div class="wrap">
-<section id="missing">
-  <div class="sec-head">
-    <span class="sec-num">04</span>
-    <h2>Looking for someone <span class="ne">हराएका व्यक्तिको खोजी</span></h2>
-    <p class="sec-sub">
-      2,502 people are out of contact, 589 of them foreign nationals. There is a chain for this, and it
-      only works if you go through it in order.
-    </p>
-  </div>
-
-  <div class="steps">
-    <div class="step">
-      <span class="step-n">1</span>
-      <div>
-        <div class="step-t">Start at the ward office
-          <span class="ne">वडा कार्यालयबाट सुरु गर्नुहोस्</span></div>
-        <div class="step-b">
-          The ward office of the missing person's home address. This is where the local list is compiled
-          and escalated upward.
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <span class="step-n">2</span>
-      <div>
-        <div class="step-t">Then the District Administration Office and District Police Office
-          <span class="ne">जिल्ला प्रशासन तथा प्रहरी कार्यालय</span></div>
-        <div class="step-b">
-          Outside the Kathmandu valley you can reach your district centre by dialling
-          <a href="tel:1234">1234</a> from anywhere in Nepal.
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <span class="step-n">3</span>
-      <div>
-        <div class="step-t">File the formal record with Nepal Police
-          <span class="ne">नेपाल प्रहरीमा आधिकारिक विवरण दर्ता</span></div>
-        <div class="step-b">
-          Call <a href="tel:100">100</a>. This is the record that search operations, identification and
-          later compensation are all run against.
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="callout callout--danger">
-    <h4>A village list or a group chat is not a record</h4>
-    <p>
-      Names circulating on WhatsApp, Viber and Facebook are not searched against and do not entitle a
-      family to anything. In Nuwakot the army posted printed lists at relief centres and families
-      gathered around them — those postings reflect the official record, they do not replace filing one.
-      If you have only told neighbours, the state does not yet know your relative is missing.
-    </p>
-  </div>
-
-  <h3 style="margin-top:2rem">If you are calling from outside Nepal</h3>
-  <div class="calls">
-    <a class="call call--secondary" href="tel:+97714256909">
-      <span class="call-num call-num--sm">+977 1 4256909</span>
-      <span class="call-what">Nepal Tourism Board</span>
-      <span class="call-note">Holds the official register of missing foreign nationals. ntb.gov.np</span>
-    </a>
-    <a class="call call--secondary" href="tel:+9779851316807">
-      <span class="call-num call-num--sm">+977 985 131 6807</span>
-      <span class="call-what">Embassy of India, Kathmandu</span>
-      <span class="call-note">Also +977 970 910 7500 and +977 981 032 6117. Accepts WhatsApp. 288 Indian nationals are among the missing.</span>
-    </a>
-    <a class="call call--secondary" href="tel:+18884074747">
-      <span class="call-num call-num--sm">1-888-407-4747</span>
-      <span class="call-what">US State Dept — for relatives in the US &amp; Canada</span>
-      <span class="call-note">From elsewhere: +1-202-501-4444. 90 US nationals are among the missing.</span>
-    </a>
-    <a class="call call--secondary" href="tel:+97714211208">
-      <span class="call-num call-num--sm">+977 1 4211208</span>
-      <span class="call-what">Ministry of Home Affairs</span>
-      <span class="call-note">Also +977-1-4211214 · control@moha.gov.np</span>
-    </a>
-  </div>
-
-  <p class="asof">
-    Every embassy in Kathmandu is cross-referencing missing-person lists by nationality. If your country
-    is not listed above, contact its embassy or consulate in Kathmandu directly.
-  </p>
-</section>
-</div>
-
-<!-- ===================================================================== -->
-<div class="wrap">
-<section id="help">
-  <div class="sec-head">
-    <span class="sec-num">05</span>
-    <h2>How to help, lawfully <span class="ne">कसरी सहयोग गर्ने</span></h2>
-    <p class="sec-sub">
-      Nepal is running this response under a one-door policy. Read the box below before you donate
-      anywhere, because it changes what you are allowed to do.
-    </p>
-  </div>
-
-  <div class="callout callout--danger" style="margin-top:0">
-    <h4>The one-door policy — this is not optional</h4>
-    <p>
-      The Government of Nepal has <strong>not granted permission to any private organisation, group or
-      individual to collect relief funds or materials independently</strong> for this disaster.
-      Independent fundraising is unlawful. All cash contributions go to the Prime Minister's Disaster
-      Relief Fund; material donations go to one of three designated hubs, or are coordinated directly
-      with the Chief District Officer of the affected district.
-    </p>
-    <p>
-      There is no cap on donations. The stated purpose is to prevent duplication and diversion, and to
-      get supplies moving through a single logistics chain rather than forty competing ones.
-    </p>
-  </div>
-
-  <h3 style="margin-top:2rem">Give money</h3>
-  <div class="cards">
-    <div class="card">
-      <div class="card-t">Prime Minister's Disaster Relief Fund</div>
-      <div class="card-b">
-        The official and only lawful destination for cash. Accepts Visa and MasterCard from anywhere in
-        the world, plus connectIPS, eSewa, AliPay+, UPI-India, and Fonepay or NepalPay QR. Donations can
-        be made in NPR or USD. For large amounts that a card issuer declines, the fund advises a SWIFT
-        transfer through your own bank.
-      </div>
-      <div class="card-m">Rs 5.44 billion raised by 29 Aug · non-refundable</div>
-      <a href="https://pmdrf.nchl.com.np/" target="_blank" rel="noopener noreferrer">pmdrf.nchl.com.np →</a>
-    </div>
-    <div class="card">
-      <div class="card-t">Nepal Red Cross · IFRC emergency appeal</div>
-      <div class="card-b">
-        The IFRC released CHF 1 million from its disaster relief emergency fund and is running an appeal.
-        Nepal Red Cross is the auxiliary to the state and operates inside the official response, so this
-        is an international route that does not compete with the one-door chain.
-      </div>
-      <div class="card-m">international · operating in-country</div>
-      <a href="https://www.ifrc.org/emergencies" target="_blank" rel="noopener noreferrer">ifrc.org →</a>
-    </div>
-    <div class="card">
-      <div class="card-t">Direct Relief</div>
-      <div class="card-b">
-        Mobilising emergency medical supplies, coordinating its inventory with Nepal's Ministry of Health,
-        and funding Mountain Heart Nepal with an emergency operating grant. Medical, not cash-to-household.
-      </div>
-      <div class="card-m">medical supply chain</div>
-      <a href="https://www.directrelief.org/emergency/nepal-floods-2026/" target="_blank" rel="noopener noreferrer">directrelief.org →</a>
-    </div>
-    <div class="card">
-      <div class="card-t">CARE · Oxfam · MSF · WFP</div>
-      <div class="card-b">
-        All four have deployed for this emergency, alongside Welthungerhilfe (€2 million from its
-        emergency fund) and IsraAID. Give to their Nepal flood appeals specifically rather than to
-        general funds, so the money is ring-fenced.
-      </div>
-      <div class="card-m">established, in-country, appeal-specific</div>
-      <a href="https://www.oxfam.org.uk/oxfam-in-action/current-emergencies/nepal-floods/" target="_blank" rel="noopener noreferrer">Oxfam appeal →</a>
-    </div>
-  </div>
-
-  <h3 style="margin-top:2rem">Give supplies</h3>
-  <div class="cards">
-    <div class="card">
-      <div class="card-t">Tribhuvan International Airport</div>
-      <div class="card-b">International air cargo. The entry point for relief material arriving from outside Nepal.</div>
-      <div class="card-m">Kathmandu · international</div>
-    </div>
-    <div class="card">
-      <div class="card-t">Maithali Barracks, Nuwakot</div>
-      <div class="card-b">Domestic relief collection, close to the affected corridor.</div>
-      <div class="card-m">Nuwakot · domestic</div>
-    </div>
-    <div class="card">
-      <div class="card-t">Baireni Barracks, Dhading</div>
-      <div class="card-b">Domestic relief collection, serving the Dhading and Gorkha reaches of the river.</div>
-      <div class="card-m">Dhading · domestic</div>
-    </div>
-    <div class="card">
-      <div class="card-t">Your district's Chief District Officer</div>
-      <div class="card-b">
-        The alternative route: coordinate directly with the CDO of the affected district. Each hub has a
-        designated focal person managing collection.
-      </div>
-      <div class="card-m">district-level coordination</div>
-    </div>
-  </div>
-
-  <div class="callout">
-    <h4>How to tell a real appeal from a fake one</h4>
-    <ul>
-      <li><strong>Anyone soliciting for this disaster who is not the PM's fund or an established international agency is, at minimum, operating without permission.</strong> That is the clearest test available right now.</li>
-      <li>A real appeal names the legal entity behind it, not just a cause. A personal bank account, an eSewa number in an individual's name, or a crypto wallet is not an appeal.</li>
-      <li>Fundraising fraud around this flood was reported within 72 hours of the water. Urgency and a countdown are the standard pressure tactics — a genuine appeal will still be there in an hour.</li>
-      <li>Reverse-image search the photographs. Recycled disaster imagery from 2024 and from Pakistan is already circulating attached to this event.</li>
-    </ul>
-  </div>
-</section>
-</div>
-
-<!-- ===================================================================== -->
-<div class="wrap">
-<section id="conditions">
-  <div class="sec-head">
-    <span class="sec-num">06</span>
-    <h2>Conditions right now <span class="ne">अहिलेको अवस्था</span></h2>
-    <p class="sec-sub">
-      Pulled from the Department of Hydrology and Meteorology's gauge network and the Department of Roads'
-      blockage register, and refreshed every three minutes while this tab is open. DHM's gauges report
-      every ten minutes and the road register is updated by hand, so three minutes is already faster than
-      the sources move — polling harder would only add load to a government server currently being used to
-      run a flood response. This is the operational picture; it is not the casualty count, which the
-      machine-readable record has not caught up with.
-    </p>
-  </div>
-
-  <div class="live-head">
-    <h3 style="margin:0">Rivers closest to their warning level</h3>
-    <button type="button" id="refresh-now" class="refresh">Refresh now</button>
-  </div>
-  <div class="live" id="rivers"><div class="live-empty">Loading gauges…</div></div>
-  <noscript><div class="live"><div class="live-empty">
-    Live gauge levels need JavaScript. Current readings are published at
-    <a href="https://bipadportal.gov.np" target="_blank" rel="noopener noreferrer">bipadportal.gov.np</a>,
-    and the flood warning line is <a href="tel:1155">1155</a>.
-  </div></div></noscript>
-
-  <h3 style="margin-top:1.8rem">Roads closed on the national network</h3>
-  <div class="live" id="roads"><div class="live-empty">Loading road register…</div></div>
-  <noscript><div class="live"><div class="live-empty">
-    The live road register needs JavaScript. Call <a href="tel:1234">1234</a> for your district
-    emergency centre, or <a href="tel:103">103</a> for traffic police road conditions.
-  </div></div></noscript>
-
-  <p class="asof" id="live-asof"></p>
-
-  <div class="callout">
-    <h4>The record has not caught up with the disaster</h4>
-    <p>
-      Nepal's official machine-readable incident database, BIPAD, logged 10 deaths nationwide across the
-      seven days spanning this flood. The Nepal Police bulletin for the same period reports 768. Both are
-      government sources; the first is simply not the one that gets updated during an emergency. If you
-      are making decisions from a dashboard, know which of those two it is reading.
-    </p>
-    <p style="margin-top:0.7rem">
-      <a href="explore.html">Query the record yourself →</a>
-    </p>
-  </div>
-</section>
-</div>
-
-<!-- ===================================================================== -->
-<div class="wrap">
-<section id="sources">
-  <div class="sec-head">
-    <span class="sec-num">07</span>
-    <h2>Where all of this came from</h2>
-    <p class="sec-sub">
-      Everything above is attributable. Where sources disagreed — and on the death toll they do — the
-      figure shown is the Nepal Police bulletin, with the disagreement stated rather than averaged away.
-    </p>
-  </div>
-  <ul class="sources">
-    <li>Nepal Police bulletin 10275 — casualty and rescue figures, district breakdown, 30 Aug 2026 14:29 NPT.</li>
-    <li><a href="https://moha.gov.np/en/post/ha-ra-tha-ka-apa-l-11" target="_blank" rel="noopener noreferrer">Ministry of Home Affairs</a> — official disaster relief appeal and ministry contacts.</li>
-    <li><a href="https://pmdrf.nchl.com.np/" target="_blank" rel="noopener noreferrer">Prime Minister's Disaster Relief Fund</a> — payment methods and donation terms.</li>
-    <li><a href="https://kathmandupost.com/money/2026/08/27/what-is-the-nepal-government-s-one-door-system-for-flood-relief" target="_blank" rel="noopener noreferrer">The Kathmandu Post</a> — the one-door policy, collection hubs, and the prohibition on independent fundraising.</li>
-    <li><a href="https://en.wikipedia.org/wiki/2026_Nepal_floods" target="_blank" rel="noopener noreferrer">2026 Nepal floods</a> — glacier collapse mechanism, infrastructure damage, international response.</li>
-    <li><a href="https://www.aljazeera.com/news/2026/8/28/nearly-470-killed-in-nepal-floods-what-we-know-about-rescue-efforts" target="_blank" rel="noopener noreferrer">Al Jazeera</a> and <a href="https://www.nbcnews.com/world/asia/nepal-floods-death-toll-climbs-missing-rescue-efforts-rcna594990" target="_blank" rel="noopener noreferrer">NBC News</a> — rescue operations and the rising toll.</li>
-    <li><a href="https://news.un.org/en/story/2026/08/1168221" target="_blank" rel="noopener noreferrer">UN News</a> — humanitarian assessment and CERF allocation.</li>
-    <li><a href="https://www.directrelief.org/emergency/nepal-floods-2026/" target="_blank" rel="noopener noreferrer">Direct Relief</a>, <a href="https://www.care.org/news-and-stories/nepal-flash-floods-2026-care-emergency-response/" target="_blank" rel="noopener noreferrer">CARE</a>, <a href="https://www.redcross.org.uk/stories/disasters-and-emergencies/world/nepal-flash-floods-2026" target="_blank" rel="noopener noreferrer">British Red Cross</a> — agency response and relief camp reporting.</li>
-    <li><a href="https://www.france24.com/en/nepal-relief-camp-shelters-grieving-families" target="_blank" rel="noopener noreferrer">France 24</a> — relief camp conditions.</li>
-    <li>Live gauge and road data: <a href="https://bipadportal.gov.np" target="_blank" rel="noopener noreferrer">BIPAD Portal</a>, NDRRMA — originating from the Department of Hydrology and Meteorology and the Department of Roads.</li>
-  </ul>
-</section>
-</div>
-
+  <section class="pane right">
+    <div id="map"></div>
+    <div id="detail" aria-live="polite"></div>
+  </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    <div class="disclaimer">
-      <p>
-        <strong>SankatSathi is not an official warning service.</strong> The Department of Hydrology and
-        Meteorology issues Nepal's flood warnings; this page does not. It has no authority to dispatch
-        anyone or anything, and it is not affiliated with, endorsed by, or operated by NDRRMA, DHM, the
-        Department of Roads, the Nepal Police or the Government of Nepal.
-      </p>
-      <p>
-        It does one thing: it puts what a person needs after this flood — the numbers to call, the record
-        to file, the lawful way to give — in one place, with every figure attributed and every
-        disagreement between sources stated rather than hidden.
-      </p>
-    </div>
-
-    <p>
-      <strong>Emergencies in Nepal:</strong>
-      <a href="tel:100">100</a> Police ·
-      <a href="tel:102">102</a> Ambulance ·
-      <a href="tel:101">101</a> Fire ·
-      <a href="tel:1234">1234</a> Disaster hotline ·
-      <a href="tel:1149">1149</a> National Emergency Operation Centre
-    </p>
-    <p>
-      Government data from BIPAD/NDRRMA, DHM and the Department of Roads is displayed with attribution for
-      informational purposes and is not redistributed; these sources publish no stated licence.
-      Basemaps © Esri. Situation reporting as cited above.
-    </p>
-    <p class="asof">
-      Event figures current as of 30 August 2026. River and road conditions are fetched live each time this
-      page loads. The situation is changing daily — verify anything you are about to act on.
-    </p>
-  </div>
-</footer>
+<div class="nojs">
+  <h2>This page needs JavaScript.</h2>
+  <p>
+    It is a live view over five APIs — Nepal's BIPAD incident record, DHM river gauges, Department of
+    Roads closures, GDACS alerts and GloFAS forecasts — not a document, so there is nothing meaningful
+    to render without fetching.
+  </p>
+  <p>
+    Emergencies in Nepal: <a href="tel:100">100</a> Police ·
+    <a href="tel:102">102</a> Ambulance ·
+    <a href="tel:1234">1234</a> district disaster hotline ·
+    <a href="tel:1149">1149</a> National Emergency Operation Centre.
+  </p>
+  <p>
+    Source data is public at <a href="https://bipadportal.gov.np">bipadportal.gov.np</a>.
+  </p>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script type="module" src="js/relief.js"></script>
+<script type="module" src="js/dash.js"></script>
 </body>
 </html>
