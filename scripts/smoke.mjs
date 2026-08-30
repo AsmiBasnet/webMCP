@@ -22,6 +22,7 @@ const T = await import("../public/js/tools.js");
 await loadRefdata();
 
 const cases = [
+  ["get_current_situation", { days: 7 }],
   ["query_incidents", { hazard: "flood", since: "2026-08-20", limit: 200 }],
   ["query_incidents", { district: "Rasuwa", since: "2026-07-01", limit: 100 }],
   ["get_casualty_breakdown", { hazard: "flood", district: "Sindhupalchok", since: "2015-04-01", groupBy: "year", limit: 1000 }],

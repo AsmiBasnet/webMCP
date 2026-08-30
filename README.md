@@ -2,7 +2,7 @@
 
 **BIPAD collects it. SankatSathi makes it answerable.**
 
-A [WebMCP](https://github.com/webmachinelearning/webmcp) interface to Nepal's public disaster record. It registers eleven tools over the live BIPAD, GDACS and GloFAS APIs, so an agent can interrogate eleven years of national disaster data in one sentence — and every answer ends in something the person can actually do.
+A [WebMCP](https://github.com/webmachinelearning/webmcp) interface to Nepal's public disaster record. It registers twelve tools over the live BIPAD, GDACS and GloFAS APIs, so an agent can interrogate eleven years of national disaster data in one sentence — and every answer ends in something the person can actually do.
 
 Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Devpost, 2026).
 
@@ -58,6 +58,7 @@ Read tools query real government data. The two write-ish tools produce artifacts
 
 | Tool | Source | What it answers |
 |---|---|---|
+| `get_current_situation` | all four feeds at once | **What is happening right now, and where relief is needed** |
 | `query_incidents` | `/incident/?expand=loss` | What happened, where, to whom |
 | `get_casualty_breakdown` | same, aggregated in-browser | Totals by year / district / hazard, **split by sex and disability** |
 | `get_river_status` | `/river/` (DHM) | Live level against each station's own warning and danger marks |
@@ -69,6 +70,8 @@ Read tools query real government data. The two write-ish tools produce artifacts
 | `find_mapping_task` | HOT campaign | An open task in the flood area |
 | `get_verified_donation_channels` | curated, verified | Five channels + how to spot a fake |
 | `compose_cap_alert` | `/river/` | A CAP v1.2 document, status `Exercise` |
+
+`get_current_situation` is the one the page opens on, and the one an agent should call first. It is the only tool that crosses the incident record, the gauges, the road register and the GDACS alert in a single answer — which is exactly the join no BIPAD screen performs. It ranks districts by **lives first** (deaths and missing, then injuries), never by incident count, which would only rank the districts whose reporting officers are most diligent. Districts with a road still closed are carried into the list even when they miss that ranking, because a district nobody can reach is a relief problem whether or not the casualty record has caught up with it yet.
 
 ### The flywheel
 
@@ -89,7 +92,13 @@ The research docs in [`docs/`](docs/) were written before implementation. Buildi
 | CARTO basemaps, no key needed | CARTO's keyless endpoint now stamps **"API KEY REQUIRED"** across every tile. Switched to Esri Canvas, still keyless. |
 | `tasks.hotosm.org/api/v2/*` returned empty — test from a browser | Returns **403** to browsers. Project deep links work, so the campaign list is curated. |
 
-One more, from the data rather than the docs: many gauges report **metres above sea level**, not metres above the river bed. A level-to-threshold *ratio* therefore reads 0.999 for a station sitting 1.8 m clear of its warning mark. Every comparison here is **headroom in metres**.
+Two more, from the data rather than the docs.
+
+**A date filter is not a recency filter.** `/river/?water_level_on__gt=…` is honoured, but BIPAD then serves the *oldest* rows matching the cutoff and pages forward. With ~170 gauges reporting every ten minutes that is ~1,000 rows an hour, so six pages of 500 never escape the first afternoon of the window: the app was displaying levels two days old under the heading "right now". `ordering=-water_level_on` puts the newest reading first and a single page then covers every station. The gauge tool now states the age of its newest reading in the answer itself, because a silently stale level reads as reassurance. The same trap applies to `/incident/`, where `ordering=-incident_on` was already in place.
+
+**`/highway/` is a register, not a live board.** It holds 311 records going back to June 2025, most long since reopened. "What is closed" now means *not OPEN, and with no reopening time in the past* — four roads tonight, 242,830 households behind them. The full register is still used for the estimated-vs-actual clearance comparison, which needs the closures that ended.
+
+One more: many gauges report **metres above sea level**, not metres above the river bed. A level-to-threshold *ratio* therefore reads 0.999 for a station sitting 1.8 m clear of its warning mark. Every comparison here is **headroom in metres**.
 
 ---
 

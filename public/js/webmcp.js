@@ -21,6 +21,24 @@ const SINCE = "ISO date (YYYY-MM-DD). The record starts April 2015.";
 
 export const TOOL_SPECS = [
   {
+    name: "get_current_situation",
+    description:
+      "START HERE for anything about now. The current national disaster picture for Nepal, assembled across " +
+      "four feeds at once: the incident record for the last few days, live river gauge levels, roadblocks " +
+      "still in force, and the GDACS international alert. Returns headline casualty figures, the districts " +
+      "worst affected ranked by lives lost rather than by incident count, which roads are cut and how many " +
+      "households are behind them. Use for 'what is happening in Nepal right now', 'where is help most " +
+      "needed', 'what is the current flood situation', 'where should relief go'. Every other tool answers a " +
+      "narrower question — call this one first to find out which narrower question to ask.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        days: int("How many days back to count incidents. Default 7. Use 1–2 for a fast-moving event, 30 for a season."),
+        topDistricts: int("How many districts to rank. Default 8."),
+      },
+    },
+  },
+  {
     name: "query_incidents",
     description:
       "Search Nepal's national disaster incident record — 60,000+ verified records from April 2015 to today, " +

@@ -5,7 +5,7 @@
 
 import { bipad, getJSON, partialCaveat, gdacsEvents, gdacsGeometry, floodForecast, latlng, distanceKm, isoDate, daysAgo } from "./api.js";
 import {
-  ref, findDistrict, findMunicipality, findHazard, hazardName,
+  ref, findDistrict, findMunicipality, findHazard, hazardName, nearestDistrict,
   incidentDistrict, incidentMunicipality,
 } from "./refdata.js";
 import { LIVE_EVENT, HAZARD } from "./config.js";
@@ -223,14 +223,21 @@ export async function get_casualty_breakdown({
 
 /**
  * Live river gauges against their own warning and danger levels.
- * `water_level_on__gt` is mandatory — without it BIPAD serves 2025 readings.
+ *
+ * Two filters are both mandatory, and the second is the one that bites.
+ * `water_level_on__gt` alone is not enough: BIPAD then serves the OLDEST rows
+ * matching the cutoff and pages forward from there. With ~170 stations
+ * reporting every ten minutes that is ~1,000 rows an hour, so six pages of 500
+ * never escape the first afternoon of the window — the app was showing levels
+ * two days old and calling them "right now". `ordering=-water_level_on` puts
+ * the newest reading first, and then a single page covers every station.
  */
 export async function get_river_status({ basin, district, near, radiusKm = 50, onlyElevated = false } = {}) {
   const d = district != null ? findDistrict(district) : null;
   const rows = await bipad(
     "river",
-    { water_level_on__gt: daysAgo(2), district: d?.id, limit: 500 },
-    { pages: 6, snapshotKey: "rivers" }
+    { water_level_on__gt: daysAgo(2), ordering: "-water_level_on", district: d?.id, limit: 500 },
+    { pages: 2, snapshotKey: "rivers" }
   );
 
   // Gauges report every 10 minutes — keep only each station's latest reading.
@@ -259,6 +266,16 @@ export async function get_river_status({ basin, district, near, radiusKm = 50, o
   const above = stations.filter((s) => s.severity === "danger" || s.severity === "warning");
   const closing = stations.filter((s) => s.severity === "approaching");
 
+  // A gauge reading is only worth what its timestamp says. State the age of the
+  // newest one in the answer itself — a silently stale level reads as reassurance.
+  const observedAt = stations.reduce(
+    (newest, s) => (s.observedAt && (!newest || s.observedAt > newest) ? s.observedAt : newest), null);
+  const ageMin = observedAt ? Math.round((Date.now() - new Date(observedAt)) / 60_000) : null;
+  const freshness =
+    ageMin == null ? " Reading times are missing from this feed."
+    : ageMin > 180 ? ` Newest reading is ${describeAge(ageMin)} old — DHM's feed is lagging, so treat these as last-known, not current.`
+    : ` Newest reading ${describeAge(ageMin)} ago.`;
+
   return {
     summary:
       `${stations.length} gauge${stations.length === 1 ? "" : "s"} reporting` +
@@ -268,9 +285,12 @@ export async function get_river_status({ basin, district, near, radiusKm = 50, o
       (closing.length
         ? `${above.length ? " " : ", and "}${closing.length} within half a metre of it` +
           `: ${closing.slice(0, 3).map((s) => `${s.title} (${s.metresBelowWarning} m to go)`).join(", ")}.`
-        : above.length ? "" : "."),
+        : above.length ? "" : ".") + freshness,
     data: stations,
-    totals: { stations: stations.length, aboveWarning: above.length, approaching: closing.length },
+    totals: {
+      stations: stations.length, aboveWarning: above.length, approaching: closing.length,
+      observedAt, readingAgeMinutes: ageMin,
+    },
     caveat: partialCaveat(rows),
     provenance: [
       src("/api/v1/river/?water_level_on__gt=…",
@@ -286,6 +306,15 @@ export async function get_river_status({ basin, district, near, radiusKm = 50, o
 
 // Half a metre below the warning mark is close enough to say so.
 const APPROACHING_M = 0.5;
+
+/** Minutes → a phrase a person reads without doing arithmetic. */
+function describeAge(min) {
+  if (min < 1) return "seconds";
+  if (min < 90) return `${min} minute${min === 1 ? "" : "s"}`;
+  const h = Math.round(min / 60);
+  if (h < 36) return `${h} hour${h === 1 ? "" : "s"}`;
+  return `${Math.round(h / 24)} days`;
+}
 
 function shapeStation(r) {
   const level = num(r.waterLevel);
@@ -377,11 +406,30 @@ export async function get_flood_forecast({ lat, lon, place, days = 14 } = {}) {
 // 5. get_road_closures
 // ---------------------------------------------------------------------------
 
-export async function get_road_closures({ district, status, near, radiusKm = 50, sortBy = "households" } = {}) {
+/**
+ * @param {object} opts
+ * @param {boolean} [opts.currentOnly=true] Only blockages still in force. The
+ *   /highway/ feed is a rolling register, not a live board: 311 records going
+ *   back to June 2025, most of them long reopened. Asking "what is closed" and
+ *   being handed a July closure that cleared in five hours is worse than no
+ *   answer, so a record counts as current only when it is not OPEN and has no
+ *   reopening time in the past. Pass false for the full register — which is
+ *   what the estimated-vs-actual clearance comparison needs.
+ */
+export async function get_road_closures({
+  district, status, near, radiusKm = 50, sortBy = "households", currentOnly = true,
+} = {}) {
   const d = district != null ? findDistrict(district) : null;
   const rows = await bipad("highway", { district: d?.id, limit: 500 }, { pages: 3, snapshotKey: "highways" });
 
   let data = rows.map(shapeRoad);
+  const register = data.length;
+  if (currentOnly) {
+    const now = Date.now();
+    data = data.filter(
+      (r) => r.status !== "OPEN" && (!r.reopenedOn || new Date(r.reopenedOn) > now)
+    );
+  }
   if (status) data = data.filter((r) => r.status === String(status).toUpperCase().replace(/\s|-/g, "_"));
   if (near) {
     const centre = await resolvePlace(near);
@@ -398,13 +446,27 @@ export async function get_road_closures({ district, status, near, radiusKm = 50,
   const cutOff = closed.reduce((s, r) => s + r.householdsCutOff, 0);
   const overruns = data.filter((r) => r.delayHours != null && r.delayHours > 0);
 
+  const partials = data.filter((r) => r.status === "PARTIAL_OPEN");
+
   return {
-    summary:
-      `${data.length} roadblock record${data.length === 1 ? "" : "s"}${d ? ` in ${d.en}` : ""} — ` +
-      `${closed.length} fully closed, cutting off ${cutOff.toLocaleString()} households. ` +
-      `${overruns.length} took longer to clear than the Department of Roads estimated.`,
+    summary: currentOnly
+      ? (data.length
+          ? `${closed.length} road${closed.length === 1 ? "" : "s"} fully closed and ` +
+            `${partials.length} passable only in part${d ? ` in ${d.en}` : " on the national network"} right now, ` +
+            `cutting off ${cutOff.toLocaleString()} households. ` +
+            (closed[0] ? `Worst: ${closed[0].title} — ${closed[0].closureReason ?? "cause not stated"}, ` +
+              `blocked since ${String(closed[0].blockedSince ?? "").slice(0, 16).replace("T", " ")}, ` +
+              `${closed[0].householdsCutOff.toLocaleString()} households behind it.` : "")
+          : `No roadblock is currently in force${d ? ` in ${d.en}` : " on the national network"}.`) +
+        ` Checked against all ${register} records in the register.`
+      : `${data.length} roadblock record${data.length === 1 ? "" : "s"}${d ? ` in ${d.en}` : ""} — ` +
+        `${closed.length} fully closed, cutting off ${cutOff.toLocaleString()} households. ` +
+        `${overruns.length} took longer to clear than the Department of Roads estimated.`,
     data,
-    totals: { records: data.length, closed: closed.length, householdsCutOff: cutOff, overruns: overruns.length },
+    totals: {
+      records: data.length, registerSize: register, closed: closed.length,
+      partiallyOpen: partials.length, householdsCutOff: cutOff, overruns: overruns.length,
+    },
     caveat: partialCaveat(rows),
     provenance: [src("/api/v1/highway/", "originates from the Department of Roads (navigate.dor.gov.np)")],
     actions: [],
@@ -952,7 +1014,176 @@ function followUpActions(incidents) {
   ];
 }
 
+// ---------------------------------------------------------------------------
+// 12. get_current_situation — the national picture, right now
+// ---------------------------------------------------------------------------
+
+/**
+ * What is happening across Nepal today, and where relief is most needed.
+ *
+ * Every other tool answers a question someone already knew to ask. This one
+ * answers the question a person has before they have any questions: *what is
+ * going on*. It is the only tool that crosses all four feeds — the incident
+ * record, the gauges, the road register and the GDACS alert — because that
+ * crossing is exactly what no BIPAD screen does.
+ *
+ * Ranking is by lives, then by people cut off: deaths and missing first, then
+ * injuries, then households behind a closed road. It deliberately does NOT
+ * rank by incident count, or the answer would be a list of the districts with
+ * the most diligent reporting officers.
+ */
+export async function get_current_situation({ days = 7, topDistricts = 8 } = {}) {
+  const since = daysAgo(days);
+
+  // Fetched together; a failure in any one must not blank the other three.
+  const [incidents, rivers, roads, alert] = await Promise.all([
+    bipad("incident", { expand: "loss", ordering: "-incident_on", incident_on__gt: since, limit: 500 },
+      { pages: 2, snapshotKey: "incidents" }).catch(() => withPartial([])),
+    get_river_status({ onlyElevated: false }).catch(() => null),
+    get_road_closures({ currentOnly: true }).catch(() => null),
+    get_global_alert_status({}).catch(() => null),
+  ]);
+
+  // --- incidents, aggregated by district ---------------------------------
+  const byDistrict = new Map();
+  const hazardMix = new Map();
+  let deaths = 0, missing = 0, injured = 0, evacuated = 0, houses = 0;
+
+  for (const r of incidents) {
+    const L = r.loss ?? {};
+    const d = incidentDistrict(r);
+    const k = d?.en ?? "Location not resolved";
+    const b = byDistrict.get(k) ?? { district: k, districtNe: d?.ne ?? null, incidents: 0, deaths: 0, missing: 0, injured: 0, evacuated: 0, hazards: {} };
+    b.incidents++;
+    b.deaths += num(L.peopleDeathCount);
+    b.missing += num(L.peopleMissingCount);
+    b.injured += num(L.peopleInjuredCount);
+    b.evacuated += num(L.familyEvacuatedCount);
+    const hn = hazardName(r.hazard);
+    b.hazards[hn] = (b.hazards[hn] ?? 0) + 1;
+    byDistrict.set(k, b);
+
+    hazardMix.set(hn, (hazardMix.get(hn) ?? 0) + 1);
+    deaths += num(L.peopleDeathCount);
+    missing += num(L.peopleMissingCount);
+    injured += num(L.peopleInjuredCount);
+    evacuated += num(L.familyEvacuatedCount);
+    houses += num(L.infrastructureDestroyedHouseCount);
+  }
+
+  // Roads fold into the same district ranking — a closure is a relief problem.
+  for (const r of roads?.data ?? []) {
+    const d = r.point ? nearestDistrict(r.point, distanceKm)?.district : null;
+    const k = d?.en ?? null;
+    if (!k) continue;
+    const b = byDistrict.get(k) ?? { district: k, districtNe: d?.ne ?? null, incidents: 0, deaths: 0, missing: 0, injured: 0, evacuated: 0, hazards: {} };
+    b.roadsBlocked = (b.roadsBlocked ?? 0) + 1;
+    b.householdsCutOff = (b.householdsCutOff ?? 0) + r.householdsCutOff;
+    byDistrict.set(k, b);
+  }
+
+  const ranked = [...byDistrict.values()]
+    .map((b) => ({
+      ...b,
+      hazards: Object.entries(b.hazards).sort((x, y) => y[1] - x[1]).map(([n, c]) => `${n} ×${c}`),
+      roadsBlocked: b.roadsBlocked ?? 0,
+      householdsCutOff: b.householdsCutOff ?? 0,
+    }))
+    .sort((a, b) =>
+      (b.deaths + b.missing) - (a.deaths + a.missing) ||
+      b.injured - a.injured ||
+      b.householdsCutOff - a.householdsCutOff ||
+      b.incidents - a.incidents
+    );
+
+  // Lives-first ranking is right, but it must not let a cut-off district fall
+  // off the end of the list. Dhading had 119,511 households behind a closed
+  // highway and no recorded death, which put it 12th — below districts with a
+  // single snake-bite fatality, and outside the default top 8. A district
+  // nobody can reach is a relief problem whether or not the record has caught
+  // up with its casualties yet, so every one with an active closure is carried
+  // through regardless of where the ranking put it.
+  const top = ranked.slice(0, topDistricts);
+  const shown = new Set(top.map((d) => d.district));
+  const carried = ranked
+    .filter((d) => d.roadsBlocked > 0 && !shown.has(d.district))
+    .map((d) => ({ ...d, carriedForRoadClosure: true }));
+  const districts = [...top, ...carried];
+
+  const gauges = (rivers?.data ?? []).filter((s) => s.severity === "danger" || s.severity === "warning" || s.severity === "approaching");
+  const closed = (roads?.data ?? []).filter((r) => r.status === "CLOSED");
+  const cutOff = (roads?.data ?? []).reduce((s, r) => s + r.householdsCutOff, 0);
+  const topHazards = [...hazardMix.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+
+  // Anything that failed is named, so a quiet number is never mistaken for a calm one.
+  const down = [
+    !incidents.length && "the incident record",
+    !rivers && "the river gauges",
+    !roads && "the road register",
+    !alert && "the GDACS alert feed",
+  ].filter(Boolean);
+
+  const lead = districts[0];
+
+  return {
+    summary:
+      `Nepal, last ${days} days: ${incidents.length} recorded incidents — ` +
+      `${deaths} dead, ${missing} missing, ${injured} injured` +
+      (houses ? `, ${houses} houses destroyed` : "") + `. ` +
+      (topHazards.length ? `Mostly ${topHazards.map(([n, c]) => `${n} (${c})`).join(", ")}. ` : "") +
+      (lead ? `Worst affected: ${lead.district} — ${lead.deaths} dead, ${lead.missing} missing, ${lead.injured} injured. ` : "") +
+      `${closed.length} road${closed.length === 1 ? "" : "s"} closed right now, ` +
+      `${cutOff.toLocaleString()} households cut off` +
+      (carried.length ? ` — including ${carried.map((d) => d.district).join(", ")}, which the casualty ranking alone would have missed` : "") + `. ` +
+      (gauges.length
+        ? `${gauges.length} gauge${gauges.length === 1 ? "" : "s"} at or near warning level` +
+          (gauges[0] ? `, closest ${gauges[0].title} (${gauges[0].metresBelowWarning} m to go).` : ".")
+        : `No gauge is within half a metre of its warning mark.`) +
+      (alert?.data?.[0] ? ` GDACS carries an ${alert.data[0].alertLevel} alert: ${alert.data[0].name}.` : "") +
+      (down.length ? ` NOTE: ${down.join(", ")} could not be reached — those parts of this picture are missing, not empty.` : ""),
+
+    data: districts,
+    // The ranking is a table; the incidents behind it are a map. Carried
+    // separately so `data` stays the answer and this stays the illustration.
+    incidentPoints: incidents.map(shapeIncident).filter((i) => i.point),
+    totals: {
+      windowDays: days, incidents: incidents.length,
+      deaths, missing, injured, familiesEvacuated: evacuated, housesDestroyed: houses,
+      roadsClosed: closed.length, householdsCutOff: cutOff,
+      gaugesElevated: gauges.length,
+      gdacsAlertLevel: alert?.data?.[0]?.alertLevel ?? null,
+      sourcesUnreachable: down,
+    },
+    caveat:
+      partialCaveat(incidents) ??
+      (down.length ? `Assembled from ${4 - down.length} of 4 feeds. Treat every total here as a floor.` : null),
+    provenance: [
+      src("/api/v1/incident/?expand=loss", `last ${days} days, aggregated by district in the browser — BIPAD has no aggregation endpoint`),
+      src("/api/v1/river/?ordering=-water_level_on", "gauge levels, Department of Hydrology and Meteorology"),
+      src("/api/v1/highway/", "roadblocks still in force, Department of Roads"),
+      { endpoint: "gdacsapi/api/events/geteventlist/SEARCH", source: "GDACS, European Commission JRC", retrievedAt: new Date().toISOString() },
+    ],
+    actions: [
+      ...(lead ? [
+        { verb: `See the incidents in ${lead.district}`, tool: "query_incidents", args: { district: lead.district, since } },
+        { verb: `What is missing in ${lead.district}`, tool: "find_coverage_gaps", args: { district: lead.district } },
+      ] : []),
+      ...(closed[0] ? [{ verb: "Which roads are cut, and who is behind them", tool: "get_road_closures", args: {} }] : []),
+      ...(gauges[0] ? [{ verb: `Forecast for ${gauges[0].title}`, tool: "get_flood_forecast",
+        args: gauges[0].point ? { lat: gauges[0].point[0], lon: gauges[0].point[1], place: gauges[0].title } : {} }] : []),
+      { verb: "How can I help", tool: "get_verified_donation_channels", args: {} },
+    ],
+  };
+}
+
+/** An empty rowset that still carries the partial flag the caveat helper reads. */
+function withPartial(arr) {
+  Object.defineProperty(arr, "partial", { value: true, enumerable: false });
+  return arr;
+}
+
 export const TOOLS = {
+  get_current_situation,
   query_incidents, get_casualty_breakdown, get_river_status, get_flood_forecast,
   get_road_closures, find_nearby_resources, find_coverage_gaps,
   get_global_alert_status, find_mapping_task, get_verified_donation_channels,

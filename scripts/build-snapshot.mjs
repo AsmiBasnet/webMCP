@@ -19,7 +19,7 @@ const daysAgo = (n) => iso(Date.now() - n * 86_400_000);
 
 const CAPTURES = [
   ["incidents", `${BIPAD}/incident/?expand=loss&ordering=-incident_on&limit=500&incident_on__gt=${daysAgo(365)}`],
-  ["rivers", `${BIPAD}/river/?water_level_on__gt=${daysAgo(2)}&limit=500`],
+  ["rivers", `${BIPAD}/river/?water_level_on__gt=${daysAgo(2)}&ordering=-water_level_on&limit=500`],
   ["highways", `${BIPAD}/highway/?limit=500`],
   ["resources", `${BIPAD}/resource/?resource_type=evacuationcentre&limit=500`],
   ["gdacs", "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH" +

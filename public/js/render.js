@@ -23,11 +23,17 @@ const date = (iso, withTime = false) =>
 
 const n = (v) => (typeof v === "number" ? v.toLocaleString() : "—");
 
-function table(headers, rows) {
+/**
+ * @param {object} [opts]
+ * @param {boolean} [opts.compact] Narrow enough to fit the results column
+ *   without a horizontal scroll. Only for tables of six columns or fewer —
+ *   the default width exists so a ten-column casualty table stays readable.
+ */
+function table(headers, rows, opts = {}) {
   const wrap = document.createElement("div");
   wrap.className = "tablewrap";
   wrap.innerHTML =
-    `<table><thead><tr>${headers
+    `<table class="${opts.compact ? "compact" : ""}"><thead><tr>${headers
       .map((h) => `<th class="${h.numeric ? "n" : ""}${h.wide ? " w" : ""}">${esc(h.label)}</th>`)
       .join("")}</tr></thead><tbody>${rows
       .map((cells) =>
@@ -51,6 +57,7 @@ const statusTag = (severity, label) =>
 
 /** Tools whose answers have a place on the map. Everything else clears it. */
 const SPATIAL = new Set([
+  "get_current_situation",
   "query_incidents", "get_river_status", "get_road_closures",
   "find_nearby_resources", "find_coverage_gaps", "get_flood_forecast",
 ]);
@@ -58,6 +65,67 @@ const SPATIAL = new Set([
 // ---------------------------------------------------------------------------
 
 const RENDERERS = {
+  /** The national picture: headline numbers first, then who is worst off. */
+  get_current_situation(result) {
+    const frag = document.createDocumentFragment();
+    const t = result.totals ?? {};
+
+    const tile = (value, label, tone) =>
+      `<div class="stat${tone ? ` stat--${tone}` : ""}">` +
+      `<div class="stat-value">${value}</div><div class="stat-label">${esc(label)}</div></div>`;
+
+    frag.append(
+      html`<div class="stats">
+        ${tile(n(t.deaths), `dead · last ${t.windowDays} days`, t.deaths ? "critical" : null)}
+        ${tile(n(t.missing), "missing", t.missing ? "serious" : null)}
+        ${tile(n(t.injured), "injured", t.injured ? "warning" : null)}
+        ${tile(n(t.roadsClosed), "roads closed now", t.roadsClosed ? "serious" : null)}
+        ${tile(n(t.householdsCutOff), "households cut off", t.householdsCutOff ? "warning" : null)}
+        ${tile(n(t.gaugesElevated), "gauges near warning", t.gaugesElevated ? "warning" : null)}
+      </div>`.firstElementChild
+    );
+
+    if (result.data?.length) {
+      frag.append(
+        table(
+          [
+            { label: "District" }, { label: "What is happening", wide: true },
+            { label: "Dead", numeric: true }, { label: "Missing", numeric: true },
+            { label: "Injured", numeric: true },
+            { label: "Cut off", numeric: true },
+          ],
+          result.data.map((d) => [
+            `${esc(d.district)}${d.carriedForRoadClosure ? ` <span class="tag tag--warning">cut off</span>` : ""}` +
+              `${d.districtNe ? `<div class="ne dim">${esc(d.districtNe)}</div>` : ""}`,
+            esc(d.hazards.join(", ")) || `<span class="dim">road closure only</span>`,
+            d.deaths ? `<b>${d.deaths}</b>` : "0",
+            n(d.missing), n(d.injured),
+            // Roads and the people behind them are one fact, not two columns —
+            // and the households figure is the one a relief planner reads.
+            d.roadsBlocked
+              ? `<b>${n(d.householdsCutOff)}</b><div class="dim">${d.roadsBlocked} road${d.roadsBlocked === 1 ? "" : "s"}</div>`
+              : `<span class="dim">—</span>`,
+          ]),
+          { compact: true }
+        )
+      );
+      const carried = result.data.filter((d) => d.carriedForRoadClosure);
+      frag.append(note(
+        "Ranked by lives first — deaths and missing, then injuries, then people cut off. " +
+        "Deliberately not by incident count, which would rank the districts that report most diligently." +
+        (carried.length
+          ? ` ${carried.map((d) => d.district).join(", ")} ` +
+            `${carried.length === 1 ? "is" : "are"} carried in below the cut: no recorded deaths, but a road ` +
+            `still closed and people behind it.`
+          : "")
+      ));
+    }
+
+    // The incidents behind the ranking belong on the map, not just in a table.
+    Map.showIncidents(result.incidentPoints ?? []);
+    return frag;
+  },
+
   query_incidents(result) {
     const frag = document.createDocumentFragment();
     Map.showIncidents(result.data);
