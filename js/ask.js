@@ -72,13 +72,20 @@ export function route(question) {
       matched, "national situation");
   }
 
-  if (has(q, "no evacuation", "without", "missing", "gap", "lack", "don't have", "do not have", "none registered", "unregistered", "no shelter", "no registered")) {
+  if (has(q, "no evacuation", "without", "missing", "gap", "lack", "lacking", "don't have",
+             "do not have", "none registered", "unregistered", "no shelter", "no registered",
+             "with no ", "no health", "no hospital", "no open space", "no facility", "not covered")) {
     return done("find_coverage_gaps", {
       hazard: hazard?.en ?? "flood",
       resourceType: resourceWord(q) ?? "evacuation centre",
       ...withPlace("district"),
       since: since ?? "2020-01-01",
     }, matched, "gap-finding");
+  }
+
+  if (has(q, "cap alert", "compose alert", "cap xml", "standards", "alert format",
+             "draft an alert", "draft alert", "write an alert", "alert document")) {
+    return done("compose_cap_alert", {}, matched, "CAP draft");
   }
 
   if (has(q, "road", "highway", "closed", "closure", "roadblock", "get through", "drive", "blocked", "cut off")) {
@@ -110,16 +117,18 @@ export function route(question) {
     }, matched, "facilities nearby");
   }
 
-  if (has(q, "donate", "donation", "give money", "fund", "charity", "contribute")) {
+  // "How can I help" belongs here rather than with the mapping task: most
+  // people asking it mean money, and the mapping flywheel is offered as a
+  // follow-up action on this result anyway.
+  const WANTS_MAPPING = has(q, "map", "osm", "openstreetmap", "trace", "volunteer");
+  if (!WANTS_MAPPING &&
+      has(q, "donate", "donation", "give money", "fund", "charity", "contribute",
+             "how can i help", "how do i help", "what can i do", "want to help")) {
     return done("get_verified_donation_channels", {}, matched, "donation channels");
   }
 
-  if (has(q, "map", "mapping", "osm", "openstreetmap", "volunteer", "how can i help", "what can i do", "trace")) {
+  if (WANTS_MAPPING || has(q, "mapping")) {
     return done("find_mapping_task", { place: place?.name ?? undefined }, matched, "mapping task");
-  }
-
-  if (has(q, "cap alert", "compose alert", "cap xml", "standards", "alert format")) {
-    return done("compose_cap_alert", {}, matched, "CAP draft");
   }
 
   if (has(q, "gdacs", "global", "international", "alert level", "biggest disaster", "major disaster")) {
@@ -162,7 +171,12 @@ function findPlace(original) {
   const consider = (item, kind) => {
     for (const name of [item.en, item.ne]) {
       if (!name || name.length < 4) continue;
-      if (!q.includes(name.toLowerCase())) continue;
+      // Whole words only. A bare substring test matches the district "Dang"
+      // inside "danger level", which then silently filters every gauge in the
+      // country down to one district — a wrong answer that looks like a right
+      // one. Boundaries are checked by hand rather than with  so that
+      // Devanagari, which  does not treat as word characters, still matches.
+      if (!containsWord(q, name.toLowerCase())) continue;
       if (!best || name.length > best.length) {
         best = { name: item.en, ne: item.ne, kind, length: name.length, district: null };
         if (kind === "municipality") best.district = districts.get(item.district)?.en ?? null;
@@ -175,10 +189,42 @@ function findPlace(original) {
   if (best) return best;
 
   // A capitalised word that is not a stop word — likely a settlement name.
-  const candidate = String(original)
-    .split(/[\s,?.]+/)
-    .find((w) => /^[A-Z][a-zA-Z]{3,}$/.test(w) && !STOPWORDS.has(w.toLowerCase()));
+  // The first word is skipped: every sentence starts capitalised, so including
+  // it turned "Give me an overview" into a search for a place called "Give".
+  // All-caps tokens are skipped too, since they are acronyms (GDACS, BIPAD),
+  // not settlements.
+  const words = String(original).split(/[\s,?.]+/).filter(Boolean);
+  const candidate = words
+    .slice(1)
+    .find((w) => /^[A-Z][a-z]{3,}$/.test(w) && !STOPWORDS.has(w.toLowerCase()));
   return candidate ? { name: candidate, kind: "settlement", district: null } : null;
+}
+
+/**
+ * True when `name` appears in `text` as a word rather than inside one.
+ *
+ * Latin names need a boundary on both sides — without the trailing one, the
+ * district "Dang" matches inside "danger level" and silently filters every
+ * gauge in the country to one district.
+ *
+ * Devanagari cannot use the same rule. Nepali postpositions attach directly to
+ * the noun — रसुवामा is रसुवा + मा, "in Rasuwa" — so a trailing boundary would
+ * reject every naturally written Nepali question. For those, only the leading
+ * boundary is required.
+ */
+function containsWord(text, name) {
+  const isLetter = (c) => c !== "" && c !== undefined && /[\p{L}\p{N}]/u.test(c);
+  const devanagari = /[ऀ-ॿ]/.test(name);
+
+  let from = 0;
+  for (;;) {
+    const i = text.indexOf(name, from);
+    if (i < 0) return false;
+    const before = i === 0 ? "" : text[i - 1];
+    const after = text[i + name.length];
+    if (!isLetter(before) && (devanagari || !isLetter(after))) return true;
+    from = i + 1;
+  }
 }
 
 const STOPWORDS = new Set([
@@ -186,12 +232,25 @@ const STOPWORDS = new Set([
   "have", "many", "since", "nepal", "river", "flood", "road", "district", "municipality",
   "compare", "people", "every", "some", "most", "worst", "help", "donate", "with", "from",
   "that", "this", "been", "were", "does", "here", "near",
+  // Verbs and nouns that open a question and would otherwise be read as a
+  // settlement the moment they appear anywhere but the first word.
+  "give", "using", "draft", "compose", "will", "open", "deaths", "died", "killed",
+  "landslide", "landslides", "floods", "flooding", "rivers", "roads", "budget",
+  "evacuation", "shelter", "hospital", "health", "facility", "facilities", "centre",
+  "center", "centres", "centers", "incidents", "incident", "areas", "area", "level",
+  "warning", "danger", "alert", "alerts", "forecast", "water", "highest", "recorded",
+  "tell", "explain", "reasoning", "sources", "report", "news", "government",
 ]);
 
 function findHazardWord(q) {
   for (const word of [
     "flood", "landslide", "earthquake", "fire", "lightning", "thunderbolt", "avalanche",
     "drought", "epidemic", "snake bite", "animal attack", "heavy rain", "storm",
+    // Nepali. refdata already aliases these; they were simply never scanned
+    // for, so a question written in Devanagari lost its hazard filter. A bare
+    // includes() is right here — Nepali postpositions attach to the noun, so
+    // बाढीले still has to match बाढी.
+    "बाढी", "पहिरो", "भूकम्प", "आगलागी", "चट्याङ", "हिमपहिरो",
   ]) {
     if (q.includes(word)) {
       const h = findHazard(word);

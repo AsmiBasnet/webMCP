@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="relief.css">
 <script>document.documentElement.className="js"</script>
 </head>
@@ -191,7 +192,57 @@
     </div>
   </div>
 
-  <h3>Deaths by district</h3>
+  <h3>The morning of 26 August</h3>
+  <figure>
+    <div class="timeline">
+      <div class="tl-step">
+        <div class="tl-time">08:40</div>
+        <div class="tl-delta">the collapse</div>
+        <div class="tl-what">Roughly 0.2 km² of ice breaks from Langtang Lirung and falls about 1.2 km.</div>
+        <div class="tl-sub">It melts on impact. Seismometers worldwide register Ms 5.2.</div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-time">08:47</div>
+        <div class="tl-delta">+ 7 minutes</div>
+        <div class="tl-what">The flood reaches the Gyirong border crossing at Rasuwagadhi.</div>
+        <div class="tl-sub">Debris moving at roughly 50 metres per second — no warning could have outrun it.</div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-time">morning</div>
+        <div class="tl-delta">+ hours</div>
+        <div class="tl-what">The surge travels 72 km down the Trishuli through seven districts.</div>
+        <div class="tl-sub">Betrawati, Trishuli Bazar, Benighat, Mugling, then out onto the Chitwan plain.</div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-time">11:40</div>
+        <div class="tl-delta">+ 3 hours</div>
+        <div class="tl-what">A second landslide follows, registering Ms 4.2.</div>
+        <div class="tl-sub">Two barrier lakes form upstream; one is assessed as a breach risk before draining.</div>
+      </div>
+    </div>
+    <figcaption>
+      The seven minutes between the ice falling and the water arriving at the border is why this page
+      leads with what to do afterwards rather than with how to be warned. Nothing in Nepal's warning
+      system operates on that timescale.
+    </figcaption>
+  </figure>
+
+  <h3 style="margin-top:2rem">The corridor it travelled</h3>
+  <figure>
+    <div id="corridor-map"></div>
+    <div class="legend">
+      <span><i class="swatch swatch--line"></i> the flood’s path down the Trishuli</span>
+      <span><i class="swatch" style="background:#d03b3b"></i> district, sized by deaths recorded there</span>
+      <span><i class="swatch" style="background:#fab219"></i> where the ice fell</span>
+    </div>
+    <figcaption>
+      District circles are scaled by the square root of the death toll, so area — not radius — carries
+      the count. Positions are district centroids, not the location of individual deaths. Basemap Esri;
+      the corridor is drawn from the reported route, not from a surveyed inundation boundary.
+    </figcaption>
+  </figure>
+
+  <h3 style="margin-top:2rem">Deaths by district</h3>
   <div class="bars">
     <div class="bar-row">
       <span class="bar-name">Chitwan<span class="ne">चितवन</span></span>
@@ -235,7 +286,40 @@
     </div>
   </div>
 
-  <div class="callout">
+  <h3 style="margin-top:2.2rem">How many are still unaccounted for</h3>
+  <figure>
+    <div class="ratio">
+      <div class="ratio-row">
+        <span class="ratio-label">Rescued alive<span class="ne">उद्धार गरिएका</span></span>
+        <span class="ratio-track"><span class="ratio-fill" style="width:100%;background:var(--good)"></span></span>
+        <span class="ratio-n">8,730</span>
+      </div>
+      <div class="ratio-row">
+        <span class="ratio-label">Still missing<span class="ne">सम्पर्कविहीन</span></span>
+        <span class="ratio-track"><span class="ratio-fill" style="width:28.7%;background:var(--serious)"></span></span>
+        <span class="ratio-n">2,502</span>
+      </div>
+      <div class="ratio-row">
+        <span class="ratio-label">Injured<span class="ne">घाइते</span></span>
+        <span class="ratio-track"><span class="ratio-fill" style="width:16.9%;background:var(--warning)"></span></span>
+        <span class="ratio-n">1,473</span>
+      </div>
+      <div class="ratio-row">
+        <span class="ratio-label">Confirmed dead<span class="ne">मृत्यु</span></span>
+        <span class="ratio-track"><span class="ratio-fill" style="width:8.8%;background:var(--critical)"></span></span>
+        <span class="ratio-n">768</span>
+      </div>
+    </div>
+    <figcaption>
+      Four separate counts on one scale — deliberately not stacked into a total, because they are not a
+      partition of the same population and adding them would invent a figure nobody has published.
+      The proportion that matters: <strong>for every person confirmed dead, more than three are still
+      unaccounted for.</strong> Most of those 2,502 will move into the first row or the last one, and
+      which of the two is what families calling 100 and 1234 are waiting to learn.
+    </figcaption>
+  </figure>
+
+  <div class="callout" style="margin-top:1.8rem">
     <h4>What was destroyed</h4>
     <ul>
       <li><strong>41 bridges and 42 km of road</strong>, including the entire Betrawati–Rasuwagadhi corridor linking Nepal to Tibet.</li>
@@ -636,6 +720,7 @@
   </div>
 </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module" src="js/relief.js"></script>
 </body>
 </html>

@@ -559,3 +559,125 @@ html:not(.js) #band-wrap,
 html:not(.js) #rivers,
 html:not(.js) #roads,
 html:not(.js) #live-asof { display: none; }
+
+/* ---------------------------------------------------------------------------
+ * Visuals
+ *
+ * Three figures, each earning its place by showing something a sentence
+ * cannot: the speed, the geography, and the ratio of resolved to unresolved.
+ * All three carry their numbers as text as well as shape, so nothing depends
+ * on reading a length or a colour.
+ * ------------------------------------------------------------------------ */
+
+figure { margin: 0; }
+figcaption {
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  margin-top: 0.7rem;
+  max-width: 70ch;
+}
+
+/* --- The morning of 26 August: a time axis, because the speed is the story */
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  margin-top: 0.4rem;
+}
+.tl-step {
+  box-shadow: 0 0 0 1px var(--rule-strong);
+  background: var(--panel);
+  padding: 1rem 1rem 1.1rem;
+  border-top: 3px solid var(--rule-strong);
+}
+.tl-step:nth-child(1) { border-top-color: var(--warning); }
+.tl-step:nth-child(2) { border-top-color: var(--serious); }
+.tl-step:nth-child(3) { border-top-color: var(--critical); }
+.tl-step:nth-child(4) { border-top-color: var(--serious); }
+
+.tl-time {
+  font-family: var(--mono);
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.tl-delta {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-top: 0.15rem;
+}
+.tl-what { font-size: 0.9rem; margin-top: 0.55rem; }
+.tl-sub { font-size: 0.82rem; color: var(--ink-3); margin-top: 0.3rem; }
+
+/* --- The corridor map */
+
+#corridor-map {
+  height: clamp(20rem, 46vh, 30rem);
+  background: var(--panel);
+  box-shadow: 0 0 0 1px var(--rule-strong);
+}
+.leaflet-container { background: var(--panel) !important; font-family: var(--sans); }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: var(--panel-3);
+  color: var(--ink);
+  border-radius: var(--radius);
+}
+.leaflet-popup-content { margin: 0.7rem 0.85rem; font-size: 0.85rem; }
+.leaflet-popup-content b { font-size: 0.95rem; }
+.leaflet-popup-content .meta { color: var(--ink-3); font-family: var(--mono); font-size: 0.75rem; }
+.leaflet-control-attribution {
+  background: rgba(11, 14, 17, 0.82) !important;
+  color: var(--ink-3) !important;
+  font-size: 0.65rem !important;
+}
+.leaflet-control-attribution a { color: var(--ink-2) !important; }
+.leaflet-bar a {
+  background: var(--panel-3) !important;
+  color: var(--ink) !important;
+  border-color: var(--rule-strong) !important;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  margin-top: 0.7rem;
+}
+.legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.swatch--line { width: 16px; height: 0; border-top: 2px solid var(--water); border-radius: 0; }
+
+/* --- Accounted for: one row per outcome, shared scale, no false total */
+
+.ratio { display: grid; gap: 0.5rem; margin-top: 0.4rem; }
+.ratio-row {
+  display: grid;
+  grid-template-columns: 11rem 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+  font-size: 0.9rem;
+}
+.ratio-label .ne { display: block; font-size: 0.78rem; line-height: 1.3; }
+.ratio-track { background: var(--panel-3); height: 1.5rem; box-shadow: 0 0 0 1px var(--rule); }
+.ratio-fill { display: block; height: 100%; border-radius: 0 2px 2px 0; min-width: 2px; }
+.ratio-n {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 4.2rem;
+}
+
+@media (max-width: 720px) {
+  .timeline { grid-template-columns: 1fr 1fr; }
+  .ratio-row { grid-template-columns: 8rem 1fr auto; gap: 0.6rem; font-size: 0.85rem; }
+}
+@media (max-width: 460px) {
+  .timeline { grid-template-columns: 1fr; }
+}
