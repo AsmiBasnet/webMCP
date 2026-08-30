@@ -57,6 +57,21 @@ export function route(question) {
   // Ordered most specific first: a gap question mentions floods and shelters
   // too, so it has to be caught before either of them.
 
+  // The broad "what is going on" question, which has no single endpoint behind
+  // it. Gated on the absence of a domain word, because "which rivers are near
+  // warning right now" is a gauge question that happens to contain "right now".
+  const NAMES_A_DOMAIN = has(q, "river", "gauge", "water level", "road", "highway", "closure",
+    "shelter", "evacuation", "hospital", "helipad", "forecast", "discharge", "donate", "map ", "mapping");
+  if (!NAMES_A_DOMAIN &&
+      has(q, "what is happening", "whats happening", "what's happening", "going on",
+             "current situation", "situation now", "situation right now", "overview", "summary",
+             "where is help", "help most needed", "most needed", "worst affected", "worst hit",
+             "hardest hit", "most affected", "where should relief", "relief go", "latest", "right now", "today")) {
+    return done("get_current_situation",
+      { days: since ? Math.max(1, Math.round((Date.now() - new Date(since)) / 86_400_000)) : 7 },
+      matched, "national situation");
+  }
+
   if (has(q, "no evacuation", "without", "missing", "gap", "lack", "don't have", "do not have", "none registered", "unregistered", "no shelter", "no registered")) {
     return done("find_coverage_gaps", {
       hazard: hazard?.en ?? "flood",

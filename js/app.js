@@ -23,10 +23,11 @@ const els = {
 };
 
 const SUGGESTIONS = [
+  "What is happening in Nepal right now?",
+  "Which roads are closed, and how many households are cut off?",
   "Which municipalities have flood incidents but no evacuation centre?",
   "How many people have died in floods in Sindhupalchok since 2015, by year?",
   "Which rivers are closest to their warning level right now?",
-  "Which roads are closed, and how many households are cut off?",
   "What is the discharge forecast for Rasuwa?",
   "Where is the nearest shelter to Dhunche?",
   "Which districts lose the most bridges to flooding?",
@@ -175,8 +176,10 @@ async function openingView() {
   // Alert footprint first, so it sits under everything drawn afterwards.
   get_event_geometry().then(Map.showAlertGeometry).catch(() => {});
 
-  await run("get_river_status", { onlyElevated: false }, {
-    question: "Which rivers are closest to their warning level right now?",
+  // The page must answer "what is happening" before anyone asks it. This is
+  // the only view that crosses all four feeds, so it is the one that opens.
+  await run("get_current_situation", { days: 7 }, {
+    question: "What is happening in Nepal right now, and where is help most needed?",
     kind: "opening",
   });
   updateDataStatus();

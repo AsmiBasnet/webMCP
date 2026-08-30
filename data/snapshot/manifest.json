@@ -1,5 +1,5 @@
 {
-  "capturedOn": "2026-08-30T16:32:21.013Z",
+  "capturedOn": "2026-08-30T17:08:00.347Z",
   "note": "Local cache for demo resilience. Live data is always preferred; the UI states when it is showing this instead.",
   "sources": [
     {
@@ -8,7 +8,7 @@
     },
     {
       "key": "rivers",
-      "url": "https://bipadportal.gov.np/api/v1/river/?water_level_on__gt=2026-08-28&limit=500"
+      "url": "https://bipadportal.gov.np/api/v1/river/?water_level_on__gt=2026-08-28&ordering=-water_level_on&limit=500"
     },
     {
       "key": "highways",
