@@ -1,0 +1,561 @@
+/* SankatSathi — flood response page.
+ *
+ * This page is read by someone who may have lost their home, is looking for a
+ * relative, or is deciding where to send money. Every design choice below
+ * follows from that: enormous tap targets on the phone numbers, Nepali beside
+ * English on anything a person must act on, no animation on anything that
+ * carries a casualty figure, and a layout that still works when the live data
+ * strip fails to load entirely.
+ *
+ * Tokens deliberately match styles.css so the explorer and this page read as
+ * one site.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --ground: #0b0e11;
+  --panel: #12161a;
+  --panel-2: #171c21;
+  --panel-3: #1e242a;
+  --rule: rgba(232, 230, 225, 0.11);
+  --rule-strong: rgba(232, 230, 225, 0.2);
+
+  --ink: #e8e6e1;
+  --ink-2: #a7acb2;
+  --ink-3: #737a81;
+
+  --accent: #e4572e;
+  --water: #4fc3d9;
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --sans: "IBM Plex Sans Devanagari", "IBM Plex Sans", system-ui, sans-serif;
+  --serif: "Newsreader", Georgia, serif;
+
+  --pad: clamp(0.9rem, 2.5vw, 2rem);
+  --radius: 3px;
+  --max: 76rem;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A hairline grid behind everything — survey paper, not a gradient. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(var(--rule) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rule) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 75%);
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+}
+
+a { color: var(--water); text-underline-offset: 3px; }
+a:hover { color: var(--ink); }
+
+.ne {
+  font-family: var(--sans);
+  color: var(--ink-2);
+}
+
+.dim { color: var(--ink-3); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------------
+ * Masthead
+ * ------------------------------------------------------------------------ */
+
+.masthead {
+  border-bottom: 1px solid var(--rule-strong);
+  background: linear-gradient(180deg, var(--panel) 0%, var(--ground) 100%);
+}
+
+.masthead-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.2rem;
+  padding-top: 1.4rem;
+  padding-bottom: 1.4rem;
+}
+
+.wordmark {
+  font-family: var(--serif);
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1;
+}
+.wordmark .np { color: var(--accent); }
+
+.tagline {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  margin: 0;
+  flex: 1 1 16rem;
+}
+
+.masthead-link {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid var(--rule-strong);
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.masthead-link:hover { border-color: var(--water); }
+
+/* The live band under the masthead — the one moving part above the fold. */
+.band {
+  border-bottom: 1px solid var(--rule);
+  background: var(--panel-2);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+}
+.band-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.4rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  color: var(--ink-2);
+}
+.band strong { color: var(--ink); font-weight: 500; }
+
+.pulse {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--good);
+  margin-right: 0.45rem;
+  vertical-align: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Hero — the event, stated plainly, and the three doors out of it
+ * ------------------------------------------------------------------------ */
+
+.hero { padding: clamp(2rem, 5vw, 3.4rem) 0 1rem; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.9rem;
+}
+
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(1.9rem, 5.5vw, 3.4rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0 0 0.5rem;
+  max-width: 22ch;
+}
+
+.hero .lede {
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  color: var(--ink-2);
+  max-width: 62ch;
+  margin: 0 0 1.6rem;
+}
+
+/* The three doors. Whoever you are, one of these is you. */
+.doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1px;
+  margin: 2rem 0 0;
+}
+
+.door {
+  background: var(--panel);
+  padding: 1.3rem 1.2rem;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  border-left: 3px solid transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.door:hover, .door:focus-visible {
+  background: var(--panel-3);
+  border-left-color: var(--accent);
+  color: inherit;
+}
+.door-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.door-title {
+  display: block;
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  line-height: 1.2;
+  margin: 0.4rem 0 0.15rem;
+}
+.door-ne { display: block; font-size: 0.92rem; color: var(--ink-2); }
+.door-note { display: block; font-size: 0.82rem; color: var(--ink-3); margin-top: 0.5rem; }
+
+/* ---------------------------------------------------------------------------
+ * Sections
+ * ------------------------------------------------------------------------ */
+
+section { padding: clamp(2.2rem, 5vw, 3.6rem) 0; scroll-margin-top: 1rem; }
+section + section { border-top: 1px solid var(--rule); }
+
+.sec-head { margin-bottom: 1.6rem; }
+.sec-num {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+h2 {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 3.4vw, 2.1rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 0.2rem 0 0.3rem;
+}
+h2 .ne { font-size: 0.62em; display: block; margin-top: 0.15rem; }
+.sec-sub { color: var(--ink-2); max-width: 68ch; margin: 0.6rem 0 0; }
+
+h3 {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0 0 0.8rem;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------------
+ * Emergency numbers — the single most important block on the page.
+ * Sized so a shaking hand can hit one, and legible at arm's length.
+ * ------------------------------------------------------------------------ */
+
+.calls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1px;
+}
+
+.call {
+  background: var(--panel);
+  padding: 1.1rem 1.1rem 1.2rem;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  min-height: 6.5rem;
+  border-left: 3px solid var(--rule-strong);
+}
+.call:hover, .call:focus-visible { background: var(--panel-3); color: inherit; }
+.call--primary { border-left-color: var(--critical); }
+.call--secondary { border-left-color: var(--warning); }
+
+.call-num {
+  font-family: var(--mono);
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  display: block;
+}
+.call-num--sm { font-size: 1.15rem; letter-spacing: -0.01em; word-break: break-all; }
+.call-what { display: block; font-size: 0.92rem; margin-top: 0.45rem; }
+.call-ne { display: block; font-size: 0.85rem; color: var(--ink-2); }
+.call-note { display: block; font-size: 0.78rem; color: var(--ink-3); margin-top: 0.3rem; }
+
+/* ---------------------------------------------------------------------------
+ * The toll
+ * ------------------------------------------------------------------------ */
+
+.tolls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1px;
+  margin-bottom: 1.4rem;
+}
+.toll {
+  background: var(--panel);
+  padding: 1.1rem 1rem;
+  border-left: 3px solid transparent;
+}
+.toll--critical { border-left-color: var(--critical); }
+.toll--serious { border-left-color: var(--serious); }
+.toll--warning { border-left-color: var(--warning); }
+.toll--good { border-left-color: var(--good); }
+
+.toll-n {
+  font-family: var(--mono);
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.toll-n--sm { font-size: clamp(1.25rem, 2.8vw, 1.7rem); }
+.toll-l {
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 0.35rem;
+}
+.toll-ne { font-size: 0.8rem; color: var(--ink-2); margin-top: 0.15rem; }
+
+/* District bars — magnitude by length, because 264 against 13 is the point. */
+.bars { display: grid; gap: 0.55rem; }
+.bar-row {
+  display: grid;
+  grid-template-columns: 9.5rem 1fr 3.5rem;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+}
+.bar-name { color: var(--ink); }
+.bar-name .ne { font-size: 0.78rem; display: block; line-height: 1.3; }
+.bar-track { background: var(--panel-3); height: 1.35rem; position: relative; }
+.bar-fill {
+  display: block;
+  background: var(--critical);
+  height: 100%;
+  border-radius: 0 2px 2px 0;
+  min-width: 2px;
+}
+.bar-n { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------------
+ * Steps — numbered, because "what do I do" is an ordered question
+ * ------------------------------------------------------------------------ */
+
+.steps { display: grid; gap: 1px; }
+.step {
+  background: var(--panel);
+  padding: 1.1rem 1.2rem;
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.step-n {
+  font-family: var(--mono);
+  font-size: 1.25rem;
+  color: var(--accent);
+  line-height: 1.3;
+}
+.step-t { font-weight: 500; font-size: 1.02rem; }
+.step-t .ne { display: block; font-weight: 400; font-size: 0.9rem; }
+.step-b { color: var(--ink-2); font-size: 0.92rem; margin-top: 0.4rem; }
+.step-b a { font-family: var(--mono); font-size: 0.9em; }
+
+/* ---------------------------------------------------------------------------
+ * Cards — organisations, camps, drop-off points
+ * ------------------------------------------------------------------------ */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1px;
+}
+.card {
+  background: var(--panel);
+  padding: 1.1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.card-t { font-weight: 500; font-size: 1rem; line-height: 1.35; }
+.card-b { font-size: 0.88rem; color: var(--ink-2); flex: 1; }
+.card-m { font-family: var(--mono); font-size: 0.76rem; color: var(--ink-3); }
+.card a { font-size: 0.88rem; }
+
+/* ---------------------------------------------------------------------------
+ * Callouts
+ * ------------------------------------------------------------------------ */
+
+.callout {
+  border: 1px solid var(--rule-strong);
+  border-left: 3px solid var(--warning);
+  background: var(--panel);
+  padding: 1.1rem 1.2rem;
+  margin: 1.4rem 0 0;
+}
+.callout--danger { border-left-color: var(--critical); }
+.callout--good { border-left-color: var(--good); }
+.callout h4 {
+  margin: 0 0 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  font-weight: 500;
+}
+.callout p { margin: 0 0 0.6rem; font-size: 0.92rem; color: var(--ink-2); }
+.callout p:last-child { margin-bottom: 0; }
+.callout ul { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--ink-2); font-size: 0.92rem; }
+.callout li { margin-bottom: 0.35rem; }
+
+/* ---------------------------------------------------------------------------
+ * Live operational strip — gauges and roads, pulled at load
+ * ------------------------------------------------------------------------ */
+
+.live { display: grid; gap: 1px; }
+.live-row {
+  background: var(--panel);
+  padding: 0.85rem 1.1rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem 1rem;
+  align-items: baseline;
+}
+.live-t { font-size: 0.95rem; }
+.live-t .ne, .live-t .dim { display: block; font-size: 0.82rem; }
+.live-v { font-family: var(--mono); font-size: 0.88rem; text-align: right; white-space: nowrap; }
+.live-empty { background: var(--panel); padding: 1rem 1.1rem; color: var(--ink-3); font-size: 0.9rem; }
+
+.tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  vertical-align: 1px;
+}
+/* Colour never carries the meaning alone — each tag also states its word. */
+.tag--danger { color: var(--critical); }
+.tag--warning { color: var(--serious); }
+.tag--approaching { color: var(--warning); }
+.tag--normal { color: var(--good); }
+.tag--closed { color: var(--critical); }
+
+/* ---------------------------------------------------------------------------
+ * Source list & footer
+ * ------------------------------------------------------------------------ */
+
+.sources { columns: 2 18rem; column-gap: 2rem; font-size: 0.85rem; color: var(--ink-2); }
+.sources li { margin-bottom: 0.5rem; break-inside: avoid; }
+
+footer {
+  border-top: 1px solid var(--rule-strong);
+  background: var(--panel);
+  padding: 2.2rem 0 3rem;
+  font-size: 0.85rem;
+  color: var(--ink-3);
+}
+footer p { max-width: 70ch; }
+footer strong { color: var(--ink-2); font-weight: 500; }
+
+.disclaimer {
+  border: 1px solid var(--rule-strong);
+  border-left: 3px solid var(--accent);
+  padding: 1.1rem 1.2rem;
+  background: var(--panel-2);
+  margin-bottom: 1.6rem;
+}
+.disclaimer p { color: var(--ink-2); margin: 0 0 0.6rem; }
+.disclaimer p:last-child { margin: 0; }
+
+.asof {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--ink-3);
+  margin-top: 0.9rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Narrow screens. Most people reading this are on a phone, possibly on a
+ * degraded network, possibly outdoors.
+ * ------------------------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  .bar-row { grid-template-columns: 7.5rem 1fr 2.8rem; font-size: 0.85rem; gap: 0.5rem; }
+  .sources { columns: 1; }
+  .call-num { font-size: 1.85rem; }
+  .step { grid-template-columns: 1.6rem 1fr; gap: 0.7rem; }
+  .live-row { grid-template-columns: 1fr; }
+  .live-v { text-align: left; }
+}
+
+/* Print — a relief worker with no signal can carry this on paper. */
+@media print {
+  body::before, .masthead-link, .band { display: none; }
+  body { background: #fff; color: #000; font-size: 11pt; }
+  a { color: #000; }
+  .door, .call, .card, .step, .toll { border: 1px solid #999 !important; background: #fff !important; }
+  section { page-break-inside: avoid; }
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Hairlines.
+ *
+ * These grids previously drew their rules by showing a coloured container
+ * through a 1px gap. That paints the empty cells of an unfilled last row too —
+ * a stray grey block beside the emergency numbers. Each child now carries its
+ * own hairline instead: neighbours' shadows meet across the gap and read as one
+ * rule, and an empty cell paints nothing at all.
+ * ------------------------------------------------------------------------ */
+
+.call, .door, .card, .toll, .step, .live-row, .live-empty {
+  box-shadow: 0 0 0 1px var(--rule-strong);
+}
+
+
+/* The live regions are the only part of this page that needs JavaScript. With
+ * it off they would otherwise sit on "Loading…" forever, which reads as broken
+ * rather than as a page that simply has no live layer. Hide them and let the
+ * <noscript> equivalents — which name the phone numbers to call instead —
+ * stand in their place. */
+html:not(.js) #band-wrap,
+html:not(.js) #rivers,
+html:not(.js) #roads,
+html:not(.js) #live-asof { display: none; }

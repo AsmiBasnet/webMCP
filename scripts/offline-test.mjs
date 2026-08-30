@@ -7,7 +7,7 @@ await p.route("**://bipadportal.gov.np/**", r => r.abort());
 await p.route("**://www.gdacs.org/**", r => r.abort());
 await p.route("**://flood-api.open-meteo.com/**", r => r.abort());
 p.on("pageerror", e => console.log("ERR", e.message));
-await p.goto("http://127.0.0.1:8787/?mode=snapshot", { waitUntil: "domcontentloaded", timeout: 60000 });
+await p.goto("http://127.0.0.1:8787/explore.html?mode=snapshot", { waitUntil: "domcontentloaded", timeout: 60000 });
 await p.waitForSelector(".result .result-summary", { timeout: 90000 });
 console.log("Opening view:", (await p.textContent(".result .result-summary")).trim().slice(0,150));
 for (const q of ["Which roads are closed?", "Which municipalities have flood incidents but no evacuation centre?"]) {

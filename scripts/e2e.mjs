@@ -6,7 +6,7 @@
 
 import { chromium } from "playwright";
 
-const BASE = process.argv[2] ?? "http://127.0.0.1:8787/";
+const BASE = process.argv[2] ?? "http://127.0.0.1:8787/explore.html";
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });

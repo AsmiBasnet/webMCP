@@ -3,7 +3,7 @@ const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: 1500, height: 1150 } });
 p.on("pageerror", e => console.log("ERR", e.message));
 p.on("console", m => m.type()==="error" && console.log("CONSOLE", m.text()));
-await p.goto("http://127.0.0.1:8787/", { waitUntil: "networkidle", timeout: 60000 });
+await p.goto("http://127.0.0.1:8787/explore.html", { waitUntil: "networkidle", timeout: 60000 });
 await p.waitForSelector(".result .result-summary", { timeout: 60000 });
 const shots = [
   ["Which municipalities have flood incidents but no evacuation centre?", "shot-gaps.png"],

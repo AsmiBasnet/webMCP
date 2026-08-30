@@ -1,12 +1,38 @@
 # SankatSathi · संकट साथी
 
-**BIPAD collects it. SankatSathi makes it answerable.**
+**One place for the 2026 Nepal flood — and a way to interrogate the record behind it.**
 
-A [WebMCP](https://github.com/webmachinelearning/webmcp) interface to Nepal's public disaster record. It registers twelve tools over the live BIPAD, GDACS and GloFAS APIs, so an agent can interrogate eleven years of national disaster data in one sentence — and every answer ends in something the person can actually do.
+Two pages, one site.
+
+**[`index.html`](public/index.html) — the response page.** What a person actually needs after the
+Bhote Koshi flood: the emergency numbers as tap-to-dial targets, the missing-person chain in the order
+it has to be followed, what the state owes a survivor, the one lawful way to donate under Nepal's
+one-door policy, and how to spot the fundraising fraud that appeared within 72 hours of the water.
+Bilingual English/Nepali on everything a person must act on. It works with JavaScript disabled — the
+only dynamic part is a live strip of river gauges and road closures on top.
+
+**[`explore.html`](public/explore.html) — the data explorer.** A [WebMCP](https://github.com/webmachinelearning/webmcp)
+interface to Nepal's public disaster record, registering twelve tools over the live BIPAD, GDACS and
+GloFAS APIs so an agent can interrogate eleven years of national disaster data in one sentence.
 
 Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Devpost, 2026).
 
 > It issues no orders and sends no alerts. It has no authority to.
+
+---
+
+## The gap this exists in
+
+On 26 August 2026 a glacier collapsed on Langtang Lirung and sent ice, water and rock down 72 km of
+the Trishuli, reaching the Chinese border in seven minutes. **768 dead, 2,502 missing, ~90,000
+displaced** across seven districts, by the Nepal Police bulletin of 30 August.
+
+Nepal's own machine-readable incident database, BIPAD, recorded **10 deaths nationwide** across the
+same seven days.
+
+Both are government sources. The second is simply not the one that gets updated during an emergency —
+it is a district-officer reporting pipeline, and the pipeline is underwater. That gap is why this repo
+has two pages instead of one: a dashboard over BIPAD alone would have shown a quiet week.
 
 ---
 
@@ -38,9 +64,10 @@ node scripts/build-snapshot.mjs    # offline fallback → public/data/snapshot/
 npx http-server public -p 8787 -c-1
 ```
 
-Then open <http://127.0.0.1:8787/>.
+Then open <http://127.0.0.1:8787/> for the response page, or
+<http://127.0.0.1:8787/explore.html> for the data explorer.
 
-For the WebMCP path, open it in Chrome with `chrome://flags/#enable-webmcp-testing`, or inside an agent that implements `document.modelContext`. Without one, the page says so plainly and the Ask box runs the identical tools locally.
+For the WebMCP path, open the explorer in Chrome with `chrome://flags/#enable-webmcp-testing`, or inside an agent that implements `document.modelContext`. Without one, the page says so plainly and the Ask box runs the identical tools locally.
 
 ### Verify it
 
@@ -48,6 +75,7 @@ For the WebMCP path, open it in Chrome with `chrome://flags/#enable-webmcp-testi
 node scripts/smoke.mjs         # every tool against the live APIs
 node scripts/e2e.mjs           # real browser: registration, agent calls, rendering
 node scripts/offline-test.mjs  # every upstream API blocked — snapshot fallback
+node scripts/relief-test.mjs   # response page: live strip, console errors, overflow
 ```
 
 ---

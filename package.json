@@ -13,7 +13,8 @@
     "test:e2e": "node scripts/e2e.mjs",
     "test:offline": "node scripts/offline-test.mjs",
     "deploy": "npx wrangler pages deploy ./public --project-name sankatsathi",
-    "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy"
+    "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy",
+    "test:relief": "node scripts/relief-test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1"
