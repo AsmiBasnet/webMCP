@@ -37,11 +37,15 @@ async function fromSnapshot(key) {
  * @param {{snapshotKey?: string, timeout?: number}} opts
  */
 export async function getJSON(url, opts = {}) {
-  const { snapshotKey, timeout = 20_000 } = opts;
+  const { snapshotKey, timeout = 20_000, force = false } = opts;
   const host = new URL(url).hostname;
 
+  // `force` is for a deliberate refresh — a poll tick, or a person pressing
+  // the refresh button. Without it the memo would hand a two-minute-old body
+  // back to a caller that explicitly asked for a new reading, and the page
+  // would claim to have updated when nothing moved.
   const hit = memo.get(url);
-  if (hit && Date.now() - hit.at < MEMO_TTL) return hit.data;
+  if (!force && hit && Date.now() - hit.at < MEMO_TTL) return hit.data;
 
   if (snapshotMode && snapshotKey) {
     const snap = await fromSnapshot(snapshotKey);
@@ -84,7 +88,7 @@ function qs(params) {
  * BIPAD paginates but its `count` is always int64 max — useless. Walk pages
  * until a short page comes back or the cap is hit.
  */
-export async function bipad(path, params = {}, { pages = 1, snapshotKey } = {}) {
+export async function bipad(path, params = {}, { pages = 1, snapshotKey, force = false } = {}) {
   const limit = Number(params.limit ?? 200);
   const out = [];
   let offset = Number(params.offset ?? 0);
@@ -96,7 +100,7 @@ export async function bipad(path, params = {}, { pages = 1, snapshotKey } = {}) 
     try {
       // Only the first page has a snapshot behind it — the cache is one page
       // deep by design, since it exists for resilience, not republication.
-      page = await getJSON(url, { snapshotKey: i === 0 ? snapshotKey : undefined });
+      page = await getJSON(url, { snapshotKey: i === 0 ? snapshotKey : undefined, force });
     } catch (err) {
       // Losing page 1 is fatal; losing page 4 is not. Return what we have and
       // mark it, so no total is ever quietly computed over half the record.

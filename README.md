@@ -145,6 +145,40 @@ One more: many gauges report **metres above sea level**, not metres above the ri
 
 ---
 
+## What "real time" means here, exactly
+
+There is nothing to subscribe to. BIPAD is a read-only REST API over a Django admin — no websocket, no
+server-sent events, no webhook — so live means polling, and the only honest questions are how often and
+how visibly. The page splits into three tiers, and each one states which it belongs to:
+
+| Tier | What | How live |
+|---|---|---|
+| **Live** | River gauges, road closures | Polled every 3 min while the tab is open. Displayed age ticks every 15 s with no network traffic. |
+| **On demand** | Incidents, GDACS, GloFAS forecast | Fetched per query in the explorer; 2-min memo so a demo audience cannot hammer the server. |
+| **Hand-entered** | Casualty counts — 768 dead, 2,502 missing | **Not live and cannot be.** No API publishes them. |
+
+**Three minutes is set by the source, not by what feels live.** DHM's gauges report every ten minutes
+and the road register is updated by hand by division officers, so polling faster returns an identical
+body and adds load to a government server currently being used to run a flood response. What a reader
+actually needs is not a request firing — it is knowing how old the number is. So the fetch is slow and
+the clock is fast.
+
+The loop pauses on a hidden tab, refreshes on return if the reading has gone stale, backs off
+exponentially to 15 minutes on repeated failure, and keeps the last good reading rather than blanking a
+panel — a person looking at a river level needs the old number plus its age far more than an empty box.
+
+**The failure case is the one that matters.** `getJSON` falls back to the built-in snapshot when a source
+is unreachable, so a poll can "succeed" while quietly serving canned data hours old. The status line
+distinguishes all three states — fresh, last-good, and snapshot — because saying *"fetched 0s ago"* over
+stored data would be a lie told in the one place a reader looks to check.
+
+The casualty tier is the honest limit of this whole project: BIPAD's machine record says 10 deaths for
+the week, the Nepal Police bulletin says 768, and the bulletin is a press release, not an endpoint.
+Those figures carry a `data-captured` timestamp and render their own age — *"entered by hand 11 hours
+ago"* — turning red past a day old, with a link to the current bulletin.
+
+---
+
 ## Deploy
 
 ```bash

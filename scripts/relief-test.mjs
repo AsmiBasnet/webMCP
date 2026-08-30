@@ -31,4 +31,46 @@ console.log("no-JS stuck on 'Loading':", t.includes("Loading"));
 console.log("no-JS tel links:", (await q.$$("a[href^='tel:']")).length);
 console.log("no-JS overflow:", await q.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth));
 
+// --- the refresh loop -----------------------------------------------------
+console.log("");
+console.log("-- refresh loop --");
+let riverHits = 0;
+p.on("request", (r) => { if (r.url().includes("/river/")) riverHits++; });
+
+// Ages must tick locally, with no network traffic between fetches.
+const beforeTick = riverHits;
+await p.evaluate(() => new Promise((r) => setTimeout(r, 17000)));
+console.log("age ticks without network:", riverHits - beforeTick === 0);
+console.log("asof:", (await p.textContent("#live-asof")).replace(/\s+/g, " ").trim().slice(0, 70));
+
+// Manual refresh must really re-fetch, and must re-enable the button.
+const beforeClick = riverHits;
+await p.click("#refresh-now");
+await p.waitForTimeout(6000);
+console.log("manual refresh fetched:", riverHits - beforeClick > 0);
+console.log("button restored:", (await p.textContent("#refresh-now")).trim());
+
+// A failed poll must keep the last good reading AND say the data is not current.
+const good = (await p.textContent("#rivers")).slice(0, 60);
+await p.route("**bipadportal.gov.np**", (r) => r.abort());
+await p.click("#refresh-now");
+await p.waitForTimeout(7000);
+const asofDown = (await p.textContent("#live-asof")).replace(/\s+/g, " ").trim();
+console.log("last good reading kept:", (await p.textContent("#rivers")).slice(0, 60) === good);
+console.log("failure stated, not hidden:", /could not be reached/.test(asofDown));
+console.log("snapshot fallback disclosed:", /snapshot|not current/.test(asofDown));
+
+// And it must recover.
+await p.unroute("**bipadportal.gov.np**");
+await p.click("#refresh-now");
+await p.waitForTimeout(8000);
+console.log("recovers:", /Fetched live/.test(await p.textContent("#live-asof")));
+
+// A hidden tab must stop polling.
+await p.evaluate(() => Object.defineProperty(document, "hidden", { value: true, configurable: true }));
+await p.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+const beforeHidden = riverHits;
+await p.waitForTimeout(5000);
+console.log("polls while hidden:", riverHits - beforeHidden, "(expect 0)");
+
 await b.close();

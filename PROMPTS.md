@@ -242,6 +242,18 @@ All rendered output on both pages is bilingual regardless of the language you as
 
 ---
 
+## Watching it update
+
+On the response page, the river and road panels poll every three minutes while the tab is open, and the
+age under them ticks every fifteen seconds without touching the network. To see the failure path, open
+devtools, go offline, and press **Refresh now**: the last good readings stay on screen and the status
+line changes to name the unreachable host and disclose that what you are looking at is the stored
+snapshot, not current conditions. Go back online and press it again — it recovers on its own.
+
+Casualty figures do not poll. They cannot: no API publishes them. They state their own age instead.
+
+---
+
 ## Running them
 
 ```bash

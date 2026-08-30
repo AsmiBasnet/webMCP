@@ -232,12 +232,12 @@ export async function get_casualty_breakdown({
  * two days old and calling them "right now". `ordering=-water_level_on` puts
  * the newest reading first, and then a single page covers every station.
  */
-export async function get_river_status({ basin, district, near, radiusKm = 50, onlyElevated = false } = {}) {
+export async function get_river_status({ basin, district, near, radiusKm = 50, onlyElevated = false, force = false } = {}) {
   const d = district != null ? findDistrict(district) : null;
   const rows = await bipad(
     "river",
     { water_level_on__gt: daysAgo(2), ordering: "-water_level_on", district: d?.id, limit: 500 },
-    { pages: 2, snapshotKey: "rivers" }
+    { pages: 2, snapshotKey: "rivers", force }
   );
 
   // Gauges report every 10 minutes — keep only each station's latest reading.
@@ -417,10 +417,10 @@ export async function get_flood_forecast({ lat, lon, place, days = 14 } = {}) {
  *   what the estimated-vs-actual clearance comparison needs.
  */
 export async function get_road_closures({
-  district, status, near, radiusKm = 50, sortBy = "households", currentOnly = true,
+  district, status, near, radiusKm = 50, sortBy = "households", currentOnly = true, force = false,
 } = {}) {
   const d = district != null ? findDistrict(district) : null;
-  const rows = await bipad("highway", { district: d?.id, limit: 500 }, { pages: 3, snapshotKey: "highways" });
+  const rows = await bipad("highway", { district: d?.id, limit: 500 }, { pages: 3, snapshotKey: "highways", force });
 
   let data = rows.map(shapeRoad);
   const register = data.length;
