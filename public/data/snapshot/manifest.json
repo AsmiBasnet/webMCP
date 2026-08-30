@@ -1,0 +1,30 @@
+{
+  "capturedOn": "2026-08-30T16:32:21.013Z",
+  "note": "Local cache for demo resilience. Live data is always preferred; the UI states when it is showing this instead.",
+  "sources": [
+    {
+      "key": "incidents",
+      "url": "https://bipadportal.gov.np/api/v1/incident/?expand=loss&ordering=-incident_on&limit=500&incident_on__gt=2025-08-30"
+    },
+    {
+      "key": "rivers",
+      "url": "https://bipadportal.gov.np/api/v1/river/?water_level_on__gt=2026-08-28&limit=500"
+    },
+    {
+      "key": "highways",
+      "url": "https://bipadportal.gov.np/api/v1/highway/?limit=500"
+    },
+    {
+      "key": "resources",
+      "url": "https://bipadportal.gov.np/api/v1/resource/?resource_type=evacuationcentre&limit=500"
+    },
+    {
+      "key": "gdacs",
+      "url": "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=FL,EQ,TC,DR&country=Nepal&fromDate=2015-01-01&toDate=2026-08-30"
+    },
+    {
+      "key": "forecast",
+      "url": "https://flood-api.open-meteo.com/v1/flood?latitude=28.1100&longitude=85.3000&daily=river_discharge,river_discharge_mean&forecast_days=14&past_days=7"
+    }
+  ]
+}

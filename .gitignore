@@ -8,3 +8,7 @@ Thumbs.db
 .vercel/
 .netlify/
 *.log
+
+# Test artifacts
+screenshot-*.png
+shot-*.png

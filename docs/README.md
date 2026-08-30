@@ -43,12 +43,29 @@ Live event during development: **Rasuwa / Bhote Koshi flash flood, 26 August 202
 
 ## Status
 
-Research and design complete. Docs 04 and 05 are the ones to read before writing deployment code.
+Research and design complete, and **built** — see [`../README.md`](../README.md) and [`../public/`](../public/).
 
-**Open items:**
-- Verify BIPAD CORS headers from a browser console — the proxy in doc 04 assumes they're absent
-- Verify `tasks.hotosm.org/api/v2/*` is reachable from a browser
-- Confirm the HOT project ID is still active before recording the demo
+Implementation settled every open item below, and corrected four assumptions in these
+docs. The docs are left as written; the corrections live in the README's
+*Findings from building against these APIs*, and are summarised here:
+
+| Open item | Resolved |
+|---|---|
+| Verify BIPAD CORS headers from a browser | ✅ **Sends `Access-Control-Allow-Origin: *`.** So do GDACS and Open-Meteo. No proxy needed; `worker.js` is now optional, for caching and http-only photos. |
+| Verify `tasks.hotosm.org/api/v2/*` from a browser | ❌ **403 to browser requests.** Project deep links work; the campaign list is curated. |
+| Confirm the HOT project ID is still active | ⚠️ Re-check `62970` immediately before recording — projects archive as they complete. |
+
+Two further corrections to doc 02 and doc 04:
+
+- **The broken resource filter is `resourceType`, not `resource_type`.** The snake_case
+  `resource_type=` works, and so does `district=`. This matters more than it sounds: the
+  register holds **58,650** facilities, so "pull all and bucket client-side" is not viable
+  in a browser. Only **390** evacuation centres exist nationwide.
+- **CARTO now requires an API key** — its keyless endpoint stamps "API KEY REQUIRED"
+  across every tile. Doc 04's tile setup is superseded; the build uses Esri Canvas.
+
+And one from the data itself: many gauges report metres **above sea level**, so a
+level/threshold ratio is meaningless. Compare headroom in metres.
 
 ---
 
