@@ -14,7 +14,7 @@
     "test:offline": "node scripts/offline-test.mjs",
     "deploy": "npx wrangler pages deploy ./public --project-name sankatsathi",
     "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy",
-    "test:relief": "node scripts/relief-test.mjs"
+    "test:dash": "node scripts/dash-test.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1"
