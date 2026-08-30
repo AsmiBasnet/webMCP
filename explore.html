@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SankatSathi — Nepal's disaster record, made answerable</title>
+<meta name="description" content="A WebMCP interface to Nepal's public disaster record: 60,000+ incidents since 2015, live river gauges and road closures from NDRRMA's BIPAD platform. Every answer ends in something you can do.">
+<meta name="color-scheme" content="dark">
+
+<meta property="og:title" content="SankatSathi — BIPAD collects it. SankatSathi makes it answerable.">
+<meta property="og:description" content="Nepal's national disaster record, queryable in one sentence by an agent. Unofficial, independent, read-only.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="styles.css">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0e11'/%3E%3Cpath d='M2 22 L8 20 L13 12 L18 17 L23 6 L27 14 L30 12' fill='none' stroke='%234FC3D9' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ccircle cx='23' cy='6' r='3' fill='%23E4572E'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <h1 class="wordmark">
+      SankatSathi<span class="dot">.</span>
+      <small>संकट साथी · Nepal's disaster record, made answerable</small>
+    </h1>
+    <p class="tagline">BIPAD collects it. This asks it questions.</p>
+    <div class="masthead-tools">
+      <a class="toggle" href="index.html">← Flood response</a>
+      <a class="toggle" href="#credits">Sources</a>
+    </div>
+  </div>
+</header>
+
+<div class="statusbar">
+  <div class="statusbar-inner">
+    <span>
+      <span class="pulse"></span>
+      <strong>GDACS Orange</strong> — Flood in Nepal, GLIDE FL-2026-000167-NPL, from 26 Aug 2026
+    </span>
+    <span id="agent-status">checking for an agent…</span>
+    <span id="data-status">connecting…</span>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="statusbar-inner">
+    <div class="emergency" id="emergency"></div>
+  </div>
+</div>
+
+<main class="shell">
+
+  <div class="column">
+
+    <section class="panel ask" aria-labelledby="ask-title">
+      <div class="panel-head">
+        <h2 class="panel-title" id="ask-title">Ask the record</h2>
+        <p class="panel-note">60,000+ incidents · Apr 2015 → today</p>
+      </div>
+      <form class="ask-form" id="ask-form">
+        <div class="ask-field">
+          <label class="visually-hidden" for="ask-input">Ask a question about Nepal's disaster record</label>
+          <input
+            class="ask-input"
+            id="ask-input"
+            type="text"
+            autocomplete="off"
+            placeholder="Which municipalities have flood incidents but no evacuation centre?">
+          <button class="ask-submit" id="ask-submit" type="submit">Ask</button>
+        </div>
+        <div class="suggestions" id="suggestions"></div>
+      </form>
+    </section>
+
+    <div class="results" id="results" aria-live="polite"></div>
+
+  </div>
+
+  <div class="column column--map">
+    <section class="panel" aria-labelledby="map-title">
+      <div class="panel-head">
+        <h2 class="panel-title" id="map-title">Where</h2>
+        <p class="panel-note">every layer drawn from the answer beside it</p>
+      </div>
+      <div id="map"></div>
+      <div class="maplegend">
+        <span class="legend-key"><span class="legend-swatch" style="background:#d03b3b"></span>above danger</span>
+        <span class="legend-key"><span class="legend-swatch" style="background:#ec835a"></span>above warning</span>
+        <span class="legend-key"><span class="legend-swatch" style="background:#fab219"></span>nearing warning</span>
+        <span class="legend-key"><span class="legend-swatch" style="background:#0ca30c"></span>normal</span>
+        <span class="legend-key"><span class="legend-swatch" style="background:#3987e5"></span>incident</span>
+        <span class="legend-key"><span class="legend-swatch" style="background:#199e70;transform:rotate(45deg)"></span>facility</span>
+        <span class="legend-key"><span class="legend-swatch" style="border:1.5px dashed #fab219;background:none"></span>coverage gap</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">What this is not</h2>
+      </div>
+      <div class="panel-body" style="font-size:.85rem;color:var(--ink-2);line-height:1.6">
+        <p style="margin:0 0 .6rem">
+          Not an official warning system — the Department of Hydrology and Meteorology
+          issues Nepal's warnings, and this does not. Not a dispatch system: it has no
+          authority to move anyone or anything, and does not pretend to. Not a
+          replacement for BIPAD — it is a lens on it, read-only.
+        </p>
+        <p style="margin:0">
+          It does one thing: it turns a public record that no member of the public can
+          read into one that answers questions, and it ends every answer with a verb.
+        </p>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<footer class="credits" id="credits">
+  <div class="credits-inner">
+
+    <div>
+      <h2>Data sources</h2>
+      <ul>
+        <li>Disaster incidents, river gauges, road closures and facilities:
+          <a href="https://bipadportal.gov.np/">BIPAD Portal</a>,
+          National Disaster Risk Reduction and Management Authority (NDRRMA),
+          Government of Nepal. <em>No licence stated — shown for informational
+          purposes only, not redistributed.</em></li>
+        <li>River and rainfall observations originate from the
+          <a href="https://www.dhm.gov.np/">Department of Hydrology and
+          Meteorology (DHM)</a>, Government of Nepal. <em>No licence stated.</em></li>
+        <li>Road closure reports originate from the
+          <a href="https://navigate.dor.gov.np/">Department of Roads (DoR)</a>,
+          Government of Nepal. <em>No licence stated.</em></li>
+        <li>Global disaster alerts:
+          <a href="https://www.gdacs.org/">GDACS</a> — a cooperation framework of
+          the European Commission, UN OCHA and UNOSAT. Indicative only.</li>
+        <li>River discharge forecasts:
+          <a href="https://open-meteo.com/">Open-Meteo.com</a>
+          (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>).
+          Contains modified Copernicus Emergency Management Service information 2026.</li>
+        <li>Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
+          contributors, ODbL 1.0.</li>
+        <li>Basemap and satellite tiles: <a href="https://www.esri.com/">Esri</a> &mdash;
+          Esri, HERE, Garmin, Maxar, Earthstar Geographics, &copy; OpenStreetMap
+          contributors and the GIS User Community.</li>
+        <li>Mapping campaign coordinated by the
+          <a href="https://www.hotosm.org/">Humanitarian OpenStreetMap Team (HOT)</a>
+          with NAXA and NDRRMA.</li>
+        <li>Built with <a href="https://leafletjs.com/">Leaflet</a> (BSD-2-Clause).</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2>What the research found missing</h2>
+      <ul>
+        <li>No public self-service flood-warning subscription for citizens.</li>
+        <li>No confirmed public web form to report an incident into BIPAD.</li>
+        <li>No aggregation endpoint — Nepal's own disaster data cannot be
+          summarised without scraping it yourself. Every total on this page is
+          computed in your browser.</li>
+        <li>No published licence or documentation on an API that serves
+          national disaster data.</li>
+        <li>Unskilled international volunteers are not wanted on the ground.
+          Accredited medical, WASH, structural, search-and-rescue and geospatial
+          specialists are. Mapping and cash are what everyone else can usefully give.</li>
+      </ul>
+
+      <h2 style="margin-top:1.2rem">Disclaimer</h2>
+      <p class="disclaimer">SankatSathi is an independent project. It is not
+      affiliated with, endorsed by, or operated by NDRRMA, DHM, DoR or the
+      Government of Nepal. It is not an official warning service. For emergencies
+      in Nepal call <strong>100</strong> (Police), <strong>102</strong> (Ambulance)
+      or <strong>1149</strong> (National Emergency Operation Centre).</p>
+    </div>
+
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
