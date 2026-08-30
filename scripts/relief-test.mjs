@@ -23,7 +23,7 @@ console.log("errors:", errs.length ? errs : 0);
 // part that needs it, and <noscript> names the phone numbers to call instead.
 const nojs = await b.newContext({ javaScriptEnabled: false, viewport: { width: 1440, height: 1000 } });
 const q = await nojs.newPage();
-await q.goto("http://127.0.0.1:8787/", { waitUntil: "domcontentloaded" });
+await q.goto("http://127.0.0.1:8787/", { waitUntil: "load" });
 const t = (await q.evaluate(() => document.body.innerText)).replace(/\s+/g, " ");
 const missing = ["100", "1234", "768", "2,502", "one-door", "pmdrf", "ward office"].filter((k) => !t.includes(k));
 console.log("no-JS missing:", missing.length ? missing : "nothing");

@@ -69,6 +69,11 @@ Then open <http://127.0.0.1:8787/> for the response page, or
 
 For the WebMCP path, open the explorer in Chrome with `chrome://flags/#enable-webmcp-testing`, or inside an agent that implements `document.modelContext`. Without one, the page says so plainly and the Ask box runs the identical tools locally.
 
+### Ask it something
+
+[`PROMPTS.md`](PROMPTS.md) lists every prompt worth trying, grouped by tool, with what each one
+actually returned. All sixty were run against the live router before being written down.
+
 ### Verify it
 
 ```bash

@@ -177,3 +177,92 @@ async function boot() {
 }
 
 boot();
+
+// ---------------------------------------------------------------------------
+// The corridor map.
+//
+// Static geography, not live data: where the ice fell, the route the surge
+// took down the Trishuli, and the seven districts that buried people. Circles
+// are scaled by the square root of the death toll so that AREA carries the
+// count — scaling the radius instead would make Chitwan look twenty times
+// Rasuwa rather than four.
+// ---------------------------------------------------------------------------
+
+// District centroids from the BIPAD admin hierarchy; tolls from Nepal Police
+// bulletin 10275. Centroids locate the district, not the deaths within it.
+const CORRIDOR_DISTRICTS = [
+  { en: "Chitwan", ne: "चितवन", at: [27.5849, 84.4345], deaths: 264 },
+  { en: "Nawalparasi East", ne: "नवलपरासी पूर्व", at: [27.6874, 84.0622], deaths: 194 },
+  { en: "Nawalparasi West", ne: "नवलपरासी पश्चिम", at: [27.5283, 83.7387], deaths: 100 },
+  { en: "Gorkha", ne: "गोरखा", at: [28.3188, 84.7902], deaths: 58 },
+  { en: "Nuwakot", ne: "नुवाकोट", at: [27.9151, 85.2354], deaths: 52 },
+  { en: "Dhading", ne: "धादिङ्ग", at: [27.9547, 84.9602], deaths: 50 },
+  { en: "Tanahu", ne: "तनहुँ", at: [27.9554, 84.2512], deaths: 37 },
+  { en: "Rasuwa", ne: "रसुवा", at: [28.1832, 85.4159], deaths: 13 },
+];
+
+// The reported route: Langtang Lirung → Rasuwagadhi → down the Bhote Koshi and
+// Trishuli → the Narayani across the Chitwan plain. Drawn from the described
+// course, not from a surveyed inundation boundary.
+const CORRIDOR_PATH = [
+  [28.2560, 85.5170], // Langtang Lirung — the collapse
+  [28.2810, 85.3780], // Rasuwagadhi / Gyirong border crossing
+  [28.1100, 85.2990], // Dhunche
+  [27.9600, 85.1800], // Betrawati
+  [27.9310, 85.1450], // Trishuli Bazar
+  [27.8700, 84.9900], // Devighat
+  [27.7700, 84.7500], // Benighat
+  [27.8600, 84.5500], // Mugling
+  [27.6900, 84.4300], // Narayangadh, Chitwan
+  [27.5700, 84.1800], // out onto the plain
+  [27.5300, 83.9000], // Nawalparasi
+];
+
+const GLACIER = [28.2560, 85.5170];
+
+function corridorMap() {
+  const el = $("corridor-map");
+  if (!el || typeof L === "undefined") return;
+
+  const map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 16, attribution: "Tiles &copy; Esri" }
+  ).addTo(map);
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 16 }
+  ).addTo(map);
+
+  L.polyline(CORRIDOR_PATH, { color: "#4fc3d9", weight: 3, opacity: 0.85 }).addTo(map);
+
+  for (const d of CORRIDOR_DISTRICTS) {
+    L.circleMarker(d.at, {
+      radius: Math.max(5, Math.sqrt(d.deaths) * 1.5),
+      color: "#d03b3b",
+      weight: 1.5,
+      fillOpacity: 0.32,
+    })
+      .bindPopup(
+        `<b>${esc(d.en)}</b><br><span class="meta">${esc(d.ne)}</span>` +
+        `<br>${d.deaths} confirmed dead` +
+        `<br><span class="meta">Nepal Police bulletin 10275</span>`
+      )
+      .addTo(map);
+  }
+
+  L.circleMarker(GLACIER, { radius: 7, color: "#fab219", weight: 2, fillOpacity: 0.5 })
+    .bindPopup(
+      `<b>Langtang Lirung</b><br><span class="meta">28.256 N, 85.517 E</span>` +
+      `<br>Roughly 0.2 km² of ice fell about 1.2 km at 08:40 on 26 August 2026.` +
+      `<br><span class="meta">Ms 5.2 — detected worldwide</span>`
+    )
+    .addTo(map);
+
+  map.fitBounds(L.latLngBounds([...CORRIDOR_PATH, ...CORRIDOR_DISTRICTS.map((d) => d.at)]), {
+    padding: [28, 28],
+  });
+}
+
+corridorMap();
