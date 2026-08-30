@@ -27,10 +27,10 @@ function failed(el, what, err) {
 
 // ---------------------------------------------------------------------------
 
-async function rivers() {
+async function rivers({ force = false } = {}) {
   const el = $("rivers");
   try {
-    const r = await get_river_status({ onlyElevated: false });
+    const r = await get_river_status({ onlyElevated: false, force });
 
     // Only the gauges anyone needs to act on. If none are close, say that
     // plainly rather than padding the list out to look busy.
@@ -69,10 +69,10 @@ async function rivers() {
   }
 }
 
-async function roads() {
+async function roads({ force = false } = {}) {
   const el = $("roads");
   try {
-    const r = await get_road_closures({ currentOnly: true });
+    const r = await get_road_closures({ currentOnly: true, force });
 
     if (!r.data.length) {
       el.innerHTML = `<div class="live-empty">No roadblock is currently in force on the national network.</div>`;
@@ -160,6 +160,124 @@ function band(river, road) {
       `The emergency numbers below are unaffected.</span>`;
 }
 
+// ---------------------------------------------------------------------------
+// Refresh loop.
+//
+// There is nothing to subscribe to. BIPAD has no websocket, no server-sent
+// events and no webhook — it is a read-only REST API over a Django admin — so
+// "real time" here means polling, and the only honest questions are how often
+// and how visibly.
+//
+// The cadence is set by the source, not by what feels live. DHM's gauges report
+// every ten minutes; the road register is updated by hand by division officers.
+// Polling faster than that would burn a government server that is, at this
+// moment, being used to coordinate a flood response, and would return the
+// identical body every time. So: fetch every three minutes, and tick the
+// displayed age every fifteen seconds so the reader can see the clock running
+// between fetches. The liveness a person needs is knowing how old the number
+// is — not watching a request fire.
+// ---------------------------------------------------------------------------
+
+const REFRESH_MS = 180_000;   // three minutes; DHM publishes every ten
+const TICK_MS = 15_000;       // re-render the ages, no network
+const BACKOFF_MAX_MS = 900_000;
+
+const state = { river: null, road: null, fetchedAt: null, failures: 0, busy: false };
+let timer = null;
+
+async function refresh({ force = true } = {}) {
+  if (state.busy) return;
+  state.busy = true;
+  setStatus("refreshing");
+
+  const [river, road] = await Promise.all([rivers({ force }), roads({ force })]);
+
+  // Keep the last good reading rather than blanking the page on one bad poll.
+  // A person looking at a river level needs the old number plus its age far
+  // more than they need an empty panel.
+  if (river) state.river = river;
+  if (road) state.road = road;
+
+  if (river || road) {
+    state.fetchedAt = Date.now();
+    // A source that answered only from the snapshot has not really answered.
+    // Counting it as success would hold the poll at full rate against a server
+    // that is failing every request.
+    state.failures = health.failed.size ? state.failures + 1 : 0;
+  } else {
+    state.failures++;
+  }
+
+  state.busy = false;
+  setStatus("idle");
+  render();
+  schedule();
+}
+
+/** Back off on repeated failure so a struggling server is not hammered. */
+function schedule() {
+  clearTimeout(timer);
+  if (document.hidden) return;   // nothing to refresh for a tab nobody is reading
+  const delay = state.failures
+    ? Math.min(REFRESH_MS * 2 ** state.failures, BACKOFF_MAX_MS)
+    : REFRESH_MS;
+  timer = setTimeout(() => refresh(), delay);
+}
+
+function render() {
+  band(state.river, state.road);
+  ages();
+}
+
+/**
+ * Ages tick locally between fetches — no network, no flicker.
+ *
+ * This line has to distinguish three states that look identical on screen:
+ * a fresh reading, the last good reading after a failed poll, and the built-in
+ * snapshot. The third is the dangerous one — `getJSON` falls back to the
+ * snapshot when a source is unreachable, so a poll can "succeed" while quietly
+ * serving canned data hours old. Saying "fetched 0s ago" over that would be a
+ * lie told in the one place the reader looks to check.
+ */
+function ages() {
+  const el = $("live-asof");
+  if (!el) return;
+  if (!state.fetchedAt) {
+    el.textContent = "Not yet fetched.";
+    return;
+  }
+
+  const secs = Math.round((Date.now() - state.fetchedAt) / 1000);
+  const when = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)} min ago`;
+
+  const down = [...health.failed.keys()];
+  const onSnapshot = health.snapshot.size > 0;
+
+  if (down.length) {
+    el.innerHTML =
+      `<strong style="color:var(--critical)">${esc(down.join(", "))} could not be reached ${esc(when)}.</strong> ` +
+      (onSnapshot
+        ? `The panels above are showing this build's stored snapshot, not current conditions — ` +
+          `check the reading times, which will be hours old. `
+        : `The panels above are the last readings that arrived, not current ones. `) +
+      `Retrying with a longer gap after ${state.failures || 1} failure${(state.failures || 1) === 1 ? "" : "s"}. ` +
+      `Call <a href="tel:1234">1234</a> for your district emergency centre.`;
+    return;
+  }
+
+  el.textContent =
+    `Fetched live from bipadportal.gov.np ${when} · ` +
+    `refreshing every ${REFRESH_MS / 60_000} minutes while this tab is open.`;
+}
+
+function setStatus(what) {
+  const btn = $("refresh-now");
+  if (btn) {
+    btn.disabled = what === "refreshing";
+    btn.textContent = what === "refreshing" ? "Refreshing…" : "Refresh now";
+  }
+}
+
 async function boot() {
   try {
     await loadRefdata();
@@ -168,12 +286,58 @@ async function boot() {
     // without it, so this is not fatal to anything on this page.
   }
 
-  const [river, road] = await Promise.all([rivers(), roads()]);
-  band(river, road);
+  handEnteredAge();
+  await refresh({ force: false });
 
-  $("live-asof").textContent =
-    `Fetched ${new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} ` +
-    `from bipadportal.gov.np. Reload this page for a fresh reading.`;
+  setInterval(ages, TICK_MS);
+
+  // A tab left open overnight should not poll all night, and should not show
+  // last night's reading when it comes back to the front either.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      clearTimeout(timer);
+    } else if (!state.fetchedAt || Date.now() - state.fetchedAt > REFRESH_MS) {
+      refresh();
+    } else {
+      schedule();
+    }
+  });
+
+  $("refresh-now")?.addEventListener("click", () => refresh());
+}
+
+// ---------------------------------------------------------------------------
+// The figures that cannot be live.
+//
+// The casualty counts on this page are hand-transcribed from a Nepal Police
+// bulletin. There is no API behind them: BIPAD's machine-readable record says
+// ten deaths for the week, the bulletin says 768, and the bulletin is a press
+// release. Nothing here can fix that, so the only responsible thing is to make
+// the staleness impossible to miss and say where the current figure lives.
+// ---------------------------------------------------------------------------
+
+function handEnteredAge() {
+  const el = document.querySelector("[data-captured]");
+  if (!el) return;
+  const captured = new Date(el.dataset.captured);
+  if (Number.isNaN(+captured)) return;
+
+  const hours = Math.round((Date.now() - captured) / 3_600_000);
+  const age =
+    hours < 1 ? "less than an hour ago"
+    : hours < 48 ? `${hours} hour${hours === 1 ? "" : "s"} ago`
+    : `${Math.round(hours / 24)} days ago`;
+
+  const out = $("hand-entered-age");
+  if (out) {
+    out.innerHTML =
+      `<strong>Entered by hand ${esc(age)}</strong>, from Nepal Police bulletin 10275. ` +
+      `These counts are not live and cannot be — no API publishes them. ` +
+      (hours > 24
+        ? `<strong style="color:var(--critical)">They are almost certainly out of date by now.</strong> `
+        : "") +
+      `The river and road panels below this section are live; these are not.`;
+  }
 }
 
 boot();

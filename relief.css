@@ -681,3 +681,29 @@ figcaption {
 @media (max-width: 460px) {
   .timeline { grid-template-columns: 1fr; }
 }
+
+/* Refresh control. Deliberately plain: this page should never look like it is
+ * animating a casualty figure. */
+.live-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+.refresh {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: var(--panel);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+}
+.refresh:hover:not(:disabled) { border-color: var(--water); color: var(--ink); }
+.refresh:disabled { opacity: 0.55; cursor: default; }
+html:not(.js) .refresh { display: none; }

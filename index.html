@@ -329,11 +329,21 @@
     </ul>
   </div>
 
-  <p class="asof">
-    Figures: Nepal Police bulletin 10275, 30 August 2026, 14:29 NPT. Counts differ between sources and are
-    still rising — other agencies published between 734 and 800 deaths on the same day. Treat every number
-    here as a floor.
-  </p>
+  <div class="callout callout--danger" data-captured="2026-08-30T14:29:00+05:45" style="margin-top:1.6rem">
+    <h4>These counts are not live</h4>
+    <p id="hand-entered-age">
+      Entered by hand from Nepal Police bulletin 10275, 30 August 2026 at 14:29 NPT. These counts are not
+      live and cannot be — no API publishes them. The river and road panels below this section are live;
+      these are not.
+    </p>
+    <p>
+      Counts differ between sources and are still rising: other agencies published between 734 and 800
+      deaths on the same day. Treat every number here as a floor, and check
+      <a href="https://nepalpolice.gov.np" target="_blank" rel="noopener noreferrer">nepalpolice.gov.np</a>
+      or <a href="https://ndrrma.gov.np" target="_blank" rel="noopener noreferrer">ndrrma.gov.np</a>
+      for the current bulletin.
+    </p>
+  </div>
 </section>
 </div>
 
@@ -618,13 +628,19 @@
     <span class="sec-num">06</span>
     <h2>Conditions right now <span class="ne">अहिलेको अवस्था</span></h2>
     <p class="sec-sub">
-      Pulled live from the Department of Hydrology and Meteorology's gauge network and the Department of
-      Roads' blockage register when you loaded this page. This is the operational picture — it is not the
-      casualty count, which the machine-readable record has not caught up with.
+      Pulled from the Department of Hydrology and Meteorology's gauge network and the Department of Roads'
+      blockage register, and refreshed every three minutes while this tab is open. DHM's gauges report
+      every ten minutes and the road register is updated by hand, so three minutes is already faster than
+      the sources move — polling harder would only add load to a government server currently being used to
+      run a flood response. This is the operational picture; it is not the casualty count, which the
+      machine-readable record has not caught up with.
     </p>
   </div>
 
-  <h3>Rivers closest to their warning level</h3>
+  <div class="live-head">
+    <h3 style="margin:0">Rivers closest to their warning level</h3>
+    <button type="button" id="refresh-now" class="refresh">Refresh now</button>
+  </div>
   <div class="live" id="rivers"><div class="live-empty">Loading gauges…</div></div>
   <noscript><div class="live"><div class="live-empty">
     Live gauge levels need JavaScript. Current readings are published at
