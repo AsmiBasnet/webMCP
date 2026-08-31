@@ -3,9 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SankatSathi — live disaster data for Nepal, from six sources</title>
-<meta name="description" content="Incidents, river gauges, road closures, GDACS alerts, GloFAS forecasts and Copernicus EMS damage assessment for Nepal in one filterable live view. Every record carries its source and its age.">
+<title>Nepal Disaster Watch — WebMCP Multi-Source Emergency Dashboard</title>
+<meta name="description" content="Live Nepal disaster records from BIPAD, DHM river gauges, Department of Roads, GDACS alerts, GloFAS forecasts and Copernicus EMS satellite assessment. Powered by WebMCP native tools.">
 
+<!-- Google Fonts for Devpost Typography -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- FontAwesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Leaflet Map CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="dash.css">
 <script>document.documentElement.className="js"</script>
@@ -13,36 +20,132 @@
 
 <body>
 
-<header>
-  <div class="wrap">
-    <h1 class="wordmark">SankatSathi <span>संकट साथी</span></h1>
-    <p class="sub">Live disaster data for Nepal, from six public sources.</p>
-    <a class="link" href="https://bipadportal.gov.np" rel="noopener">bipadportal.gov.np</a>
+<!-- 1. Devpost Global Top Navigation -->
+<header class="devpost-nav">
+  <div class="wrap nav-wrap">
+    <div class="nav-brand">
+      <a href="/" class="brand-link">
+        <span class="brand-icon"><i class="fa-solid fa-satellite-dish"></i></span>
+        <span class="brand-name">Nepal Disaster Watch</span>
+        <span class="brand-tag">WebMCP</span>
+      </a>
+    </div>
+
+    <div class="nav-links">
+      <a href="#feed-section" class="nav-item active"><i class="fa-solid fa-table-list"></i> Live Feed</a>
+      <a href="#map-section" class="nav-item"><i class="fa-solid fa-map-location-dot"></i> Crisis Map</a>
+      <a href="#webmcp-section" class="nav-item"><i class="fa-solid fa-brain"></i> WebMCP Tools</a>
+      <a href="https://bipadportal.gov.np" target="_blank" rel="noopener" class="nav-item ext"><i class="fa-solid fa-arrow-up-right-from-square"></i> BIPAD Portal</a>
+      <a class="btn-donate-global" href="https://pmdrf.nchl.com.np/" target="_blank" rel="noopener noreferrer" title="Prime Minister Disaster Relief Fund">
+        <i class="fa-solid fa-hand-holding-heart"></i> <span>Donate to Nepal Relief</span>
+      </a>
+    </div>
   </div>
 </header>
 
-<!-- Per-source freshness. Rendered by dash.js; never hidden, never collapsed. -->
-<div class="statusbar">
-  <div class="wrap"><div id="status">Loading…</div></div>
+<!-- 2. Devpost Signature Hero Challenge Banner -->
+<section class="devpost-hero">
+  <div class="wrap hero-wrap">
+    <div class="hero-left">
+      <div class="hero-tag-row">
+        <span class="hero-badge"><span class="pulse-dot"></span> LIVE DISASTER TELEMETRY</span>
+        <span class="hero-subbadge">NEPAL EMERGENCY PLATFORM</span>
+      </div>
+      <h1 class="hero-title">Nepal Disaster Watch <span class="nepali-text">नेपाल विपद् वाच</span></h1>
+      <p class="hero-desc">
+        Six live public sources normalised into one unified, filterable record type with 11 native WebMCP tools. Real-time river gauges, NDRRMA disaster incidents, roadblock closures, international alerts, discharge forecasts, and satellite damage assessments.
+      </p>
+      
+      <div class="hero-actions">
+        <a href="#feed-section" class="btn-hero-primary"><i class="fa-solid fa-bolt"></i> Explore Live Feed</a>
+        <a href="https://pmdrf.nchl.com.np/" target="_blank" rel="noopener" class="btn-hero-donate"><i class="fa-solid fa-heart"></i> Prime Minister Relief Fund</a>
+        <a href="/" class="btn-hero-secondary"><i class="fa-solid fa-sliders"></i> Command Prototype</a>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <!-- Devpost Signature Challenge Info Card -->
+      <div class="challenge-info-card">
+        <div class="card-header">
+          <span class="card-tag"><i class="fa-solid fa-circle-nodes"></i> Active Telemetry</span>
+          <span class="status-live-tag">LIVE FEED</span>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <i class="fa-solid fa-database info-icon text-blue"></i>
+            <div>
+              <div class="info-label">Data Sources</div>
+              <div class="info-val">6 National & Satellite Feeds</div>
+            </div>
+          </div>
+          <div class="info-row">
+            <i class="fa-solid fa-map-pin info-icon text-red"></i>
+            <div>
+              <div class="info-label">Geographic Coverage</div>
+              <div class="info-val">77 Districts of Nepal</div>
+            </div>
+          </div>
+          <div class="info-row">
+            <i class="fa-solid fa-robot info-icon text-green"></i>
+            <div>
+              <div class="info-label">Agent Interface</div>
+              <div class="info-val">11 Client-Side WebMCP Tools</div>
+            </div>
+          </div>
+          <div class="info-row">
+            <i class="fa-solid fa-clock-rotate-left info-icon text-orange"></i>
+            <div>
+              <div class="info-label">Refresh Cadence</div>
+              <div class="info-val">Auto-updates every 3 minutes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Devpost Navigation Subnav Tabs -->
+<nav class="devpost-subnav" id="feed-section">
+  <div class="wrap subnav-wrap">
+    <div class="subnav-tabs">
+      <button type="button" class="subnav-tab active" data-target="tab-feed"><i class="fa-solid fa-list-check"></i> Live Records & Filter</button>
+      <button type="button" class="subnav-tab" data-target="tab-map"><i class="fa-solid fa-map"></i> Crisis Map View</button>
+      <button type="button" class="subnav-tab" data-target="tab-webmcp"><i class="fa-solid fa-code"></i> WebMCP Tool Registry</button>
+      <button type="button" class="subnav-tab" data-target="tab-sources"><i class="fa-solid fa-circle-info"></i> Provenance & APIs</button>
+    </div>
+  </div>
+</nav>
+
+<!-- 4. Source Status Freshness Bar (Never hidden) -->
+<div class="statusbar-container">
+  <div class="wrap">
+    <div class="statusbar-card">
+      <div id="status">Loading data feeds…</div>
+    </div>
+  </div>
 </div>
 
-<!-- Counts for what is on screen right now. Rendered by dash.js. -->
-<div class="wrap"><div id="summary" aria-label="Summary of the current view"></div></div>
+<!-- 5. Summary KPI Strip -->
+<div class="wrap summary-wrap">
+  <div id="summary" aria-label="Summary of the current view"></div>
+</div>
 
-<div class="wrap">
+<!-- 6. Filter & Search Controls Bar -->
+<div class="wrap filter-container">
   <div class="filters">
     <div class="fgroup">
-      <span class="flabel">Source</span>
+      <span class="flabel"><i class="fa-solid fa-layer-group"></i> Source</span>
       <span id="f-sources"></span>
     </div>
 
     <div class="fgroup">
-      <span class="flabel">Severity</span>
+      <span class="flabel"><i class="fa-solid fa-shield-halved"></i> Severity</span>
       <span id="f-sev"></span>
     </div>
 
     <div class="fgroup">
-      <label class="flabel" for="f-days" title="Filters dated events — incidents and alerts. Gauge readings, forecasts and roadblocks still in force describe the present, so they are always shown.">Window</label>
+      <label class="flabel" for="f-days" title="Filters dated events — incidents and alerts. Gauge readings, forecasts and roadblocks still in force describe the present, so they are always shown."><i class="fa-regular fa-calendar"></i> Window</label>
       <select id="f-days">
         <option value="1">Today</option>
         <option value="2" selected>Today + yesterday</option>
@@ -53,17 +156,17 @@
     </div>
 
     <div class="fgroup">
-      <label class="flabel" for="f-district">District</label>
+      <label class="flabel" for="f-district"><i class="fa-solid fa-location-dot"></i> District</label>
       <select id="f-district"></select>
     </div>
 
     <div class="fgroup">
-      <label class="flabel" for="f-kind">Type</label>
+      <label class="flabel" for="f-kind"><i class="fa-solid fa-tag"></i> Type</label>
       <select id="f-kind"></select>
     </div>
 
     <div class="fgroup">
-      <label class="flabel" for="f-sort">Sort</label>
+      <label class="flabel" for="f-sort"><i class="fa-solid fa-arrow-down-wide-short"></i> Sort</label>
       <select id="f-sort">
         <option value="recency" selected>Today first</option>
         <option value="severity">Severity</option>
@@ -71,56 +174,184 @@
       </select>
     </div>
 
-    <div class="fgroup">
-      <input type="search" id="f-search" placeholder="Search titles, places…" aria-label="Search records">
+    <div class="fgroup fgroup-search">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+        <input type="search" id="f-search" placeholder="Search titles, places, stations…" aria-label="Search records">
+      </div>
     </div>
 
     <span class="spacer"></span>
-    <span id="count"></span>
-    <button type="button" class="act" id="reset">Reset</button>
-    <button type="button" class="act" id="refresh">Refresh</button>
+    <span id="count" class="filter-count-badge"></span>
+    <button type="button" class="act act-reset" id="reset"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+    <button type="button" class="act act-refresh" id="refresh"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
   </div>
 </div>
 
-<main class="wrap">
-  <section class="pane pane--list" aria-label="Records">
-    <div id="rows"></div>
+<!-- 7. Main Two-Column Layout Grid -->
+<main class="wrap main-layout-grid">
+  <!-- Left Column: Unified Records Feed -->
+  <section class="pane pane--list" aria-label="Records List">
+    <div class="pane-header">
+      <h2><i class="fa-solid fa-tower-broadcast text-blue"></i> Live Multi-Source Feed</h2>
+      <span class="pane-subtitle">Ranked by severity & recency</span>
+    </div>
+    <div id="rows" class="records-container"></div>
   </section>
 
-  <section class="pane right">
-    <div id="map"></div>
-    <div id="detail" aria-live="polite"></div>
+  <!-- Right Column: Interactive Map & Drill-Down Detail Drawer -->
+  <section class="pane pane--sidebar" id="map-section" aria-label="Map and Details">
+    <div class="sidebar-card">
+      <div class="sidebar-header">
+        <h2><i class="fa-solid fa-map-location-dot text-red"></i> Incident & Gauge Map</h2>
+      </div>
+      <div id="map" class="leaflet-map-wrapper"></div>
+    </div>
+
+    <div class="sidebar-card detail-card-container">
+      <div id="detail" aria-live="polite"></div>
+    </div>
   </section>
 </main>
 
-<footer class="wrap">
-  <p>
-    SankatSathi issues no orders and sends no alerts. It shows what six public sources published,
-    with their provenance and their age attached.
-  </p>
-  <p>
-    Emergencies in Nepal: <a href="tel:100">100</a> Police ·
-    <a href="tel:102">102</a> Ambulance ·
-    <a href="tel:1234">1234</a> district disaster hotline ·
-    <a href="tel:1149">1149</a> National Emergency Operation Centre.
-  </p>
+<!-- 8. WebMCP Interactive Tools Section -->
+<section class="wrap section-card" id="webmcp-section">
+  <div class="section-card-header">
+    <div class="section-title-group">
+      <span class="section-badge"><i class="fa-solid fa-microchip"></i> AGENT-NATIVE CAPABILITIES</span>
+      <h2>WebMCP Native Tools & Model Context</h2>
+      <p>This web application exposes 11 client-side WebMCP tools via <code>document.modelContext</code> so AI agents can query and control the dashboard directly.</p>
+    </div>
+    <a href="https://developer.chrome.com/docs/ai/webmcp" target="_blank" rel="noopener" class="btn-doc-link">
+      <i class="fa-solid fa-book-open"></i> WebMCP Docs
+    </a>
+  </div>
+
+  <div class="tools-grid">
+    <div class="tool-item-card">
+      <div class="tool-name"><code>get_situation_summary</code></div>
+      <div class="tool-desc">Returns whole-country overview: breakdown by severity, worst districts, source health.</div>
+    </div>
+    <div class="tool-item-card">
+      <div class="tool-name"><code>list_records</code></div>
+      <div class="tool-desc">Queries records matching optional source, severity, district or search constraints.</div>
+    </div>
+    <div class="tool-item-card">
+      <div class="tool-name"><code>filter_records</code></div>
+      <div class="tool-desc">Mutates active dashboard filters so person watching sees the exact view requested.</div>
+    </div>
+    <div class="tool-item-card">
+      <div class="tool-name"><code>get_record_details</code></div>
+      <div class="tool-desc">Fetches full raw payload, loss numbers, station coordinates and metadata.</div>
+    </div>
+    <div class="tool-item-card">
+      <div class="tool-name"><code>find_critical_gauges</code></div>
+      <div class="tool-desc">Inspects DHM telemetry for gauges at/above warning or danger thresholds.</div>
+    </div>
+    <div class="tool-item-card">
+      <div class="tool-name"><code>find_isolated_settlements</code></div>
+      <div class="tool-desc">Cross-references road blocks with population demographics cut off.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 9. Sources & Provenance Section -->
+<section class="wrap section-card" id="sources-section">
+  <div class="section-card-header">
+    <div class="section-title-group">
+      <span class="section-badge"><i class="fa-solid fa-server"></i> PROVENANCE & DATA SHAPE</span>
+      <h2>Integrated Public Data Sources</h2>
+    </div>
+  </div>
+  <div class="sources-table-wrap">
+    <table class="sources-table">
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>Origin Agency</th>
+          <th>Cadence</th>
+          <th>Verification</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Incidents</strong></td>
+          <td>NDRRMA / BIPAD</td>
+          <td>As district officers file</td>
+          <td>Verified Government Form</td>
+        </tr>
+        <tr>
+          <td><strong>River Gauges</strong></td>
+          <td>DHM (Hydrology & Meteorology)</td>
+          <td>Every 10 min (~167 stations)</td>
+          <td>Automated Telemetry</td>
+        </tr>
+        <tr>
+          <td><strong>Road Closures</strong></td>
+          <td>Department of Roads</td>
+          <td>As divisions report</td>
+          <td>Division Engineer Logs</td>
+        </tr>
+        <tr>
+          <td><strong>Alerts</strong></td>
+          <td>GDACS & BIPAD</td>
+          <td>Per episode / realtime</td>
+          <td>EC JRC / NDRRMA</td>
+        </tr>
+        <tr>
+          <td><strong>Discharge Forecast</strong></td>
+          <td>GloFAS / Open-Meteo</td>
+          <td>Daily runs (3 corridor basins)</td>
+          <td>Hydrological Model</td>
+        </tr>
+        <tr>
+          <td><strong>Damage Assessment</strong></td>
+          <td>Copernicus EMS Rapid Mapping</td>
+          <td>Per satellite pass</td>
+          <td>Orbital Optical Survey</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 10. Devpost-Style Footer -->
+<footer class="devpost-footer">
+  <div class="wrap footer-wrap">
+    <div class="footer-col-main">
+      <div class="footer-logo">
+        <i class="fa-solid fa-satellite-dish"></i> Nepal Disaster Watch
+      </div>
+      <p class="footer-disclaimer">
+        Nepal Disaster Watch is an independent open-source initiative built for the WebMCP developer ecosystem. It issues no official warnings and sends no legal alerts. It shows what public sources published with their provenance and timestamp attached.
+      </p>
+    </div>
+
+    <div class="footer-col-helplines">
+      <h4>Nepal Emergency Contacts</h4>
+      <ul class="helpline-list">
+        <li><strong>100</strong> — Nepal Police</li>
+        <li><strong>102</strong> — Emergency Ambulance</li>
+        <li><strong>1234</strong> — District Disaster Hotline</li>
+        <li><strong>1149</strong> — National Emergency Operation Centre (NEOC)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="wrap bottom-wrap">
+      <span>Data published by <a href="https://bipadportal.gov.np" target="_blank" rel="noopener">bipadportal.gov.np</a> &copy; 2026</span>
+      <span>Support relief operations at <a href="https://pmdrf.nchl.com.np/" target="_blank" rel="noopener">Prime Minister Disaster Relief Fund</a></span>
+    </div>
+  </div>
 </footer>
 
+<!-- Fallback for JavaScript-disabled environments -->
 <div class="nojs wrap">
   <h2>This page needs JavaScript.</h2>
   <p>
     It is a live view over six APIs — Nepal's BIPAD incident record, DHM river gauges, Department of
     Roads closures, GDACS alerts, GloFAS forecasts and Copernicus EMS satellite damage assessment —
     not a document, so there is nothing meaningful to render without fetching.
-  </p>
-  <p>
-    Emergencies in Nepal: <a href="tel:100">100</a> Police ·
-    <a href="tel:102">102</a> Ambulance ·
-    <a href="tel:1234">1234</a> district disaster hotline ·
-    <a href="tel:1149">1149</a> National Emergency Operation Centre.
-  </p>
-  <p>
-    Source data is public at <a href="https://bipadportal.gov.np">bipadportal.gov.np</a>.
   </p>
 </div>
 

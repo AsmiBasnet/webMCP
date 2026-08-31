@@ -128,13 +128,35 @@ function specs(ctl) {
           )
           .slice(0, 8);
 
+        let deaths = 0, missing = 0, injured = 0, evacuated = 0, affected = 0, houses = 0, lossNpr = 0;
+        for (const r of rows) {
+          if (r.source === "incident" && r.loss) {
+            deaths += (r.loss.deaths || 0);
+            missing += (r.loss.missing || 0);
+            injured += (r.loss.injured || 0);
+            evacuated += (r.loss.evacuated || 0);
+            affected += (r.loss.affected || 0);
+            houses += (r.loss.houses || 0);
+            lossNpr += (r.loss.estimatedLoss || 0);
+          }
+        }
+
         return {
           summary:
             `${rows.length} records in the last ${state.filters.days} day(s): ` +
             (Object.entries(bySeverity).map(([s, n]) => `${n} ${s}`).join(", ") || "none") +
-            ".",
+            `. Casualties: ${deaths} deaths, ${missing} missing, ${injured} injured, ${evacuated} families evacuated.`,
           bySeverity,
           bySource,
+          humanImpact: {
+            deaths,
+            missing,
+            injured,
+            evacuatedFamilies: evacuated,
+            affectedFamilies: affected,
+            housesDestroyed: houses,
+            estimatedLossNpr: lossNpr,
+          },
           worstDistricts,
           sources: sourceHealth(),
           fetchedAt: state.fetchedAt ? new Date(state.fetchedAt).toISOString() : null,
