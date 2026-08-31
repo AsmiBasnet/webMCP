@@ -3,7 +3,12 @@
 // so one implementation serves the WebMCP registration, the in-page Ask box,
 // and the rendered views. Nothing here writes, commands, or dispatches.
 
-import { bipad, getJSON, partialCaveat, gdacsEvents, gdacsGeometry, floodForecast, latlng, distanceKm, isoDate, daysAgo } from "./api.js";
+import {
+  bipad, getJSON, partialCaveat, gdacsEvents, gdacsGeometry, floodForecast,
+  copernicusActivations, copernicusActivation,
+  latlng, distanceKm, isoDate, daysAgo,
+} from "./api.js";
+import { fromDamage } from "./feed.js";
 import {
   ref, findDistrict, findMunicipality, findHazard, hazardName, nearestDistrict,
   incidentDistrict, incidentMunicipality,
@@ -1182,8 +1187,122 @@ function withPartial(arr) {
   return arr;
 }
 
+
+// ---------------------------------------------------------------------------
+// 13. get_damage_assessment — buildings counted from orbit
+// ---------------------------------------------------------------------------
+
+/**
+ * Copernicus EMS Rapid Mapping damage assessment for Nepal.
+ *
+ * The only source in this app that measures damage from satellite imagery
+ * rather than from a district officer's report — which is exactly what matters
+ * when the reporting chain is underwater. BIPAD recorded ~10 deaths nationwide
+ * for the week of the Bhote Koshi flood; EMS graded 441 buildings in Timure
+ * alone and found 431 of them affected.
+ *
+ * Two calls: the activation list carries no geometry and no statistics, so
+ * each activation's detail is fetched separately.
+ *
+ * The endpoint sends no Access-Control-Allow-Origin header, so in a browser
+ * this resolves from the build-time snapshot unless PROXY is configured. The
+ * provenance says which.
+ */
+export async function get_damage_assessment({ activation, district, includeClosed = false } = {}) {
+  const d = district != null ? findDistrict(district) : null;
+
+  const list = await copernicusActivations("Nepal");
+  let codes = (list.results ?? [])
+    .filter((a) => includeClosed || !a.closed)
+    .map((a) => a.code);
+  if (activation) codes = codes.filter((c) => c === String(activation).toUpperCase());
+  if (!codes.length && activation) codes = [String(activation).toUpperCase()];
+
+  const details = await Promise.all(
+    codes.slice(0, 3).map((c) => copernicusActivation(c).catch(() => null))
+  );
+
+  const activations = [];
+  let rows = [];
+  for (const det of details) {
+    const act = det?.results?.[0];
+    if (!act) continue;
+    activations.push(act);
+    for (const aoi of act.aois ?? []) {
+      const rec = fromDamage(act, aoi);
+      const dd = rec.point ? nearestDistrict(rec.point, distanceKm)?.district : null;
+      rows.push({
+        activation: act.code,
+        activationName: act.name,
+        area: aoi.name ?? `AOI ${aoi.number}`,
+        district: dd?.en ?? null,
+        districtNe: dd?.ne ?? null,
+        buildingsAffected: rec.metrics["Buildings affected"] ?? null,
+        share: rec.severityLabel,
+        severity: rec.severity,
+        sensor: rec.metrics.Sensor ?? null,
+        imagedAt: rec.metrics["Image acquired"] ?? null,
+        point: rec.point,
+        breakdown: Object.fromEntries(
+          Object.entries(rec.metrics).filter(([k]) => k.startsWith("Built-up —") || k.startsWith("Land use —"))
+        ),
+      });
+    }
+  }
+
+  if (d) rows = rows.filter((r) => r.district === d.en);
+
+  // Worst first, by the share of buildings affected.
+  const pct = (r) => Number(String(r.share).match(/(\d+)%/)?.[1] ?? -1);
+  rows.sort((a, b) => pct(b) - pct(a));
+
+  const graded = rows.filter((r) => pct(r) >= 0);
+  const lead = graded[0];
+  const open = activations.filter((a) => !a.closed);
+
+  return {
+    summary:
+      (activations.length
+        ? `${activations.length} Copernicus EMS activation${activations.length === 1 ? "" : "s"} for Nepal` +
+          (open.length ? ` (${open.map((a) => a.code).join(", ")} still open)` : " (all closed)") +
+          `, covering ${rows.length} mapped area${rows.length === 1 ? "" : "s"}` +
+          (d ? ` — ${rows.length ? `${rows.length} in ${d.en}` : `none in ${d.en}`}` : "") + ". "
+        : "No Copernicus EMS activation is on record for Nepal. ") +
+      (lead
+        ? `Worst graded: ${lead.area}${lead.district ? ` (${lead.district})` : ""} — ` +
+          `${lead.buildingsAffected} buildings, ${lead.share}, imaged by ${lead.sensor ?? "satellite"} ` +
+          `on ${String(lead.imagedAt ?? "").slice(0, 10)}.`
+        : rows.length
+          ? "No area has published building statistics yet — they are mapped, which is not the same as undamaged."
+          : ""),
+    data: rows,
+    totals: {
+      activations: activations.length,
+      openActivations: open.length,
+      areasMapped: rows.length,
+      areasGraded: graded.length,
+    },
+    provenance: [{
+      endpoint: "rapidmapping.emergency.copernicus.eu/backend/dashboard-api/",
+      source: "Copernicus Emergency Management Service, European Commission",
+      retrievedAt: new Date().toISOString(),
+      note:
+        "Contains Copernicus Emergency Management Service information 2026. The endpoint sends no " +
+        "Access-Control-Allow-Origin header, so in a browser without PROXY configured this resolves " +
+        "from the build-time snapshot rather than live.",
+    }],
+    actions: [
+      ...(lead?.district ? [
+        { verb: `See incidents in ${lead.district}`, tool: "query_incidents", args: { district: lead.district, since: daysAgo(30) } },
+        { verb: `What is missing in ${lead.district}`, tool: "find_coverage_gaps", args: { district: lead.district } },
+      ] : []),
+      { verb: "Compare with the national picture", tool: "get_current_situation", args: {} },
+    ],
+  };
+}
+
 export const TOOLS = {
-  get_current_situation,
+  get_current_situation, get_damage_assessment,
   query_incidents, get_casualty_breakdown, get_river_status, get_flood_forecast,
   get_road_closures, find_nearby_resources, find_coverage_gaps,
   get_global_alert_status, find_mapping_task, get_verified_donation_channels,

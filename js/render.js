@@ -57,7 +57,7 @@ const statusTag = (severity, label) =>
 
 /** Tools whose answers have a place on the map. Everything else clears it. */
 const SPATIAL = new Set([
-  "get_current_situation",
+  "get_current_situation", "get_damage_assessment",
   "query_incidents", "get_river_status", "get_road_closures",
   "find_nearby_resources", "find_coverage_gaps", "get_flood_forecast",
 ]);
@@ -123,6 +123,56 @@ const RENDERERS = {
 
     // The incidents behind the ranking belong on the map, not just in a table.
     Map.showIncidents(result.incidentPoints ?? []);
+    return frag;
+  },
+
+  /** Satellite damage grading, one row per mapped area. */
+  get_damage_assessment(result) {
+    const frag = document.createDocumentFragment();
+    if (!result.data?.length) {
+      frag.append(html`<p class="empty">No Copernicus EMS area of interest matched. An activation that has not been graded yet is mapped, not undamaged.</p>`.firstElementChild);
+      return frag;
+    }
+
+    Map.showIncidents(
+      result.data.filter((r) => r.point).map((r) => ({
+        point: r.point,
+        title: `${r.area} — ${r.share}`,
+        hazard: "satellite damage grading",
+        district: r.district,
+        incidentOn: r.imagedAt,
+        verified: true,
+        dataSource: r.sensor,
+        loss: null,
+      }))
+    );
+
+    frag.append(
+      table(
+        [
+          { label: "Area" }, { label: "District" },
+          { label: "Buildings affected", numeric: true }, { label: "Share", numeric: true },
+          { label: "Imaged" },
+        ],
+        result.data.map((r) => [
+          `${esc(r.area)}<div class="dim">${esc(r.activation)}</div>`,
+          esc(r.district ?? "—"),
+          r.buildingsAffected ? `<b>${esc(r.buildingsAffected)}</b>` : `<span class="dim">not graded</span>`,
+          // The tag carries the percentage only. Spelling out "of surveyed
+          // buildings affected" in every row stretched the table until the
+          // acquisition time was clipped off the end of it.
+          statusTag(r.severity, String(r.share).match(/\d+%/)?.[0] ?? "not graded"),
+          `${esc(r.sensor ?? "—")}<div class="dim">${esc(String(r.imagedAt ?? "").slice(0, 16).replace("T", " "))}</div>`,
+        ]),
+        { compact: true }
+      )
+    );
+
+    frag.append(note(
+      "Share is of the buildings Copernicus surveyed in that area, not of the settlement. Counted from " +
+      "satellite imagery rather than a field report — which is why this can disagree with the incident " +
+      "record, and why it is worth asking when the record looks quiet."
+    ));
     return frag;
   },
 

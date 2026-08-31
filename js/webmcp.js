@@ -39,6 +39,25 @@ export const TOOL_SPECS = [
     },
   },
   {
+    name: "get_damage_assessment",
+    description:
+      "Satellite-derived building damage assessment for Nepal, from Copernicus EMS Rapid Mapping. " +
+      "This is the only source that counts destroyed and damaged buildings from orbit rather than from " +
+      "a district officer's report, which makes it the one to reach for when the official incident " +
+      "record looks implausibly quiet for a large event. Returns one row per mapped area of interest " +
+      "with the number of buildings affected against the number surveyed, the share, the satellite and " +
+      "the acquisition time. Use for 'how much damage was there', 'which settlements were destroyed', " +
+      "'is there satellite assessment for this flood', 'how many buildings were lost in Rasuwa'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        activation: str("Copernicus EMS activation code, e.g. \"EMSR927\". Omit for all open activations covering Nepal."),
+        district: str("Restrict to one district. " + PLACE),
+        includeClosed: bool("Include activations EMS has closed. Default false — a closed activation is history."),
+      },
+    },
+  },
+  {
     name: "query_incidents",
     description:
       "Search Nepal's national disaster incident record — 60,000+ verified records from April 2015 to today, " +
