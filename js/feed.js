@@ -9,7 +9,10 @@
 // records — the raw payload rides along on every record so drill-down can show
 // exactly what the source said.
 
-import { bipad, gdacsEvents, floodForecast, latlng, daysAgo, isoDate, health } from "./api.js";
+import {
+  bipad, gdacsEvents, floodForecast, copernicusActivations, copernicusActivation,
+  latlng, daysAgo, isoDate, health,
+} from "./api.js";
 import { incidentDistrict, incidentMunicipality, hazardName, nearestDistrict } from "./refdata.js";
 import { distanceKm } from "./api.js";
 
@@ -20,6 +23,7 @@ export const SOURCES = [
   { id: "road",     label: "Roads",      origin: "Dept. of Roads via BIPAD",    cadence: "as divisions report" },
   { id: "alert",    label: "Alerts",     origin: "GDACS / EC JRC",              cadence: "per episode" },
   { id: "forecast", label: "Forecast",   origin: "GloFAS / Open-Meteo",         cadence: "daily" },
+  { id: "damage",   label: "Damage",     origin: "Copernicus EMS Rapid Mapping", cadence: "per satellite pass" },
 ];
 
 /** Ordered worst-first; the UI sorts and colours on this. */
@@ -297,6 +301,112 @@ function fromForecast(json, place) {
   };
 }
 
+
+// ---------------------------------------------------------------------------
+// Copernicus EMS Rapid Mapping
+//
+// The only source here that counts buildings from orbit rather than from a
+// district officer's form — which matters precisely when the reporting chain
+// is underwater. One record per area of interest, because an activation covers
+// several valleys and a single row for the whole thing would hide which one is
+// worst.
+// ---------------------------------------------------------------------------
+
+/** Centre of a WKT POLYGON/POINT, by bounding box. Good enough to place a pin. */
+function wktCentre(wkt) {
+  const nums = String(wkt ?? "").match(/-?\d+(?:\.\d+)?/g);
+  if (!nums || nums.length < 2) return null;
+  const lons = [], lats = [];
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    lons.push(Number(nums[i]));
+    lats.push(Number(nums[i + 1]));
+  }
+  const mid = (a) => (Math.min(...a) + Math.max(...a)) / 2;
+  const lat = mid(lats), lon = mid(lons);
+  return Number.isFinite(lat) && Number.isFinite(lon) ? [lat, lon] : null;
+}
+
+/** Sum every {total, affected} leaf under a product's stats tree. */
+function damageTotals(stats) {
+  const out = {};
+  let total = 0, affected = 0;
+  for (const [group, entries] of Object.entries(stats ?? {})) {
+    if (!entries || typeof entries !== "object") continue;
+    for (const [label, v] of Object.entries(entries)) {
+      if (!v || typeof v !== "object" || typeof v.total !== "number") continue;
+      out[`${group} — ${label}`] = `${num(v.affected)} of ${v.total}${v.unit ? ` ${v.unit}` : ""}`;
+      if (group === "Built-up") { total += v.total; affected += num(v.affected); }
+    }
+  }
+  return { rows: out, buildingsTotal: total, buildingsAffected: affected };
+}
+
+function fromDamage(activation, aoi) {
+  // An AOI can carry several products — an initial grading and later monitoring
+  // passes. The newest image is the one that describes the ground now.
+  const products = aoi.products ?? [];
+  const images = products.flatMap((p) => (p.images ?? []).map((im) => ({ ...im, product: p })));
+  images.sort((a, b) => String(b.acquisitionTime ?? "").localeCompare(String(a.acquisitionTime ?? "")));
+  const newest = images[0] ?? null;
+  const product = newest?.product ?? products[products.length - 1] ?? null;
+
+  const { rows, buildingsTotal, buildingsAffected } = damageTotals(product?.stats);
+  const share = buildingsTotal ? buildingsAffected / buildingsTotal : null;
+
+  // Severity is the share of surveyed buildings damaged. A settlement where
+  // nine in ten are gone is not the same finding as one where three in a
+  // hundred are, and the raw count alone conflates them with size.
+  const severity =
+    share == null ? "info"
+    : share >= 0.5 ? "critical"
+    : share >= 0.2 ? "serious"
+    : share > 0 ? "warning"
+    : "normal";
+
+  return {
+    id: `damage:${activation.code}:AOI${String(aoi.number).padStart(2, "0")}`,
+    source: "damage",
+    current: !activation.closed,   // the activation is still open
+    kind: activation.subCategory ?? activation.category ?? "damage assessment",
+    title: aoi.name ?? `Area of interest ${aoi.number}`,
+    titleNe: null,
+    at: newest?.acquisitionTime ?? activation.activationTime ?? null,
+    severity,
+    severityLabel:
+      share == null ? "no damage statistics published"
+      : `${Math.round(share * 100)}% of surveyed buildings affected`,
+    district: null,                // resolved by the caller, which has refdata
+    districtNe: null,
+    municipality: null,            // the activation name is an event, not a place
+    point: wktCentre(aoi.extent),
+    line:
+      (buildingsTotal
+        ? `${buildingsAffected.toLocaleString()} of ${buildingsTotal.toLocaleString()} buildings affected`
+        : "Mapped, no building statistics published") +
+      (newest ? ` · ${newest.sensorName ?? newest.sensorType ?? "satellite"}, ` +
+        `${String(newest.acquisitionTime ?? "").slice(0, 16).replace("T", " ")}` : ""),
+    metrics: {
+      "Activation": `${activation.code ?? "?"} — ${activation.name ?? ""}`.trim(),
+      "Area of interest": `${aoi.number} — ${aoi.name ?? "unnamed"}`,
+      "Buildings affected": buildingsTotal ? `${buildingsAffected} of ${buildingsTotal}` : null,
+      ...rows,
+      "Product type": product?.type ?? null,
+      "Monitoring pass": product?.monitoring ? product.monitoringNumber : null,
+      "Sensor": newest?.sensorName ?? null,
+      "Resolution class": newest?.resolutionClass ?? null,
+      "Image acquired": newest?.acquisitionTime ?? null,
+      "Activated": activation.activationTime ?? null,
+      "Activation open": activation.closed ? "no" : "yes",
+      "Requested by": activation.activator ?? null,
+      "Reason": activation.reason ?? null,
+      "GDACS event": activation.gdacsId ?? null,
+      "Report": activation.reportLink ?? null,
+      "Disasters Charter": activation.charterUrl ?? null,
+    },
+    raw: { activation: { ...activation, aois: undefined }, aoi },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Fetching
 // ---------------------------------------------------------------------------
@@ -398,15 +508,48 @@ export async function loadFeed({ days = 7, sources = null, force = false } = {})
     }
   }
 
+  if (want("damage")) {
+    // Two hops: list the country's activations, then pull detail for the open
+    // ones. Closed activations are history and would otherwise pin an eleven-
+    // year-old assessment to the top of a two-day view.
+    jobs.push(
+      copernicusActivations("Nepal")
+        .then(async (list) => {
+          const open = (list.results ?? []).filter((a) => !a.closed).slice(0, 3);
+          const details = await Promise.all(
+            open.map((a) => copernicusActivation(a.code).catch(() => null))
+          );
+          for (const d of details) {
+            const act = d?.results?.[0];
+            if (!act) continue;
+            for (const aoi of act.aois ?? []) records.push(fromDamage(act, aoi));
+          }
+        })
+        .catch((e) => errors.push({ source: "damage", message: e.message }))
+    );
+  }
+
   await Promise.all(jobs);
+
+  // Damage AOIs arrive with a polygon but no admin unit; resolve it the same
+  // way road records are.
+  for (const r of records) {
+    if (r.source === "damage" && r.point && !r.district) {
+      const d = nearestDistrict(r.point, distanceKm)?.district;
+      r.district = d?.en ?? null;
+      r.districtNe = d?.ne ?? null;
+    }
+  }
 
   // Which sources served stored data rather than a live response. A snapshot
   // fallback "succeeds", so without this the status line would show a healthy
   // feed while displaying hours-old canned rows.
   const SNAP_TO_SOURCE = {
     incidents: "incident", rivers: "river", highways: "road",
-    gdacs: "alert", forecast: "forecast",
+    gdacs: "alert", forecast: "forecast", copernicus: "damage",
   };
+  // Per-activation snapshots are keyed copernicus-EMSR927 and so on.
+  for (const k of health.snapshot) if (k.startsWith("copernicus-")) SNAP_TO_SOURCE[k] = "damage";
   const stale = new Set([...health.snapshot].map((k) => SNAP_TO_SOURCE[k]).filter(Boolean));
 
   return {

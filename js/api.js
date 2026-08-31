@@ -1,7 +1,7 @@
 // Network layer. Every call records where it came from and how fresh it is,
 // because every figure this app shows must carry its provenance.
 
-import { PROXY, DIRECT_HOSTS, BIPAD, GDACS, OPENMETEO, NEPAL } from "./config.js";
+import { PROXY, DIRECT_HOSTS, BIPAD, GDACS, OPENMETEO, COPERNICUS, NEPAL } from "./config.js";
 
 const memo = new Map();          // url -> { at, data }
 const MEMO_TTL = 120_000;        // BIPAD has no SLA; don't hammer it.
@@ -144,6 +144,29 @@ export async function floodForecast(lat, lon, days = 14) {
     daily: "river_discharge,river_discharge_mean", forecast_days: days, past_days: 7,
   })}`;
   return getJSON(url, { snapshotKey: "forecast" });
+}
+
+/**
+ * Copernicus EMS Rapid Mapping activations for one country, then the full
+ * detail for a given activation code.
+ *
+ * Two calls, because the list endpoint carries summary fields only — the areas
+ * of interest, their polygons and the building-damage statistics all live
+ * behind the per-activation endpoint.
+ *
+ * Neither returns an Access-Control-Allow-Origin header, so both are unusable
+ * from a browser unless PROXY is configured. Without one they fail and fall
+ * back to the build-time snapshot, which the status bar reports as stale
+ * rather than passing off as live.
+ */
+export async function copernicusActivations(country = "Nepal") {
+  const url = `${COPERNICUS}/public-activations-info/?country=${encodeURIComponent(country)}`;
+  return getJSON(url, { snapshotKey: "copernicus" });
+}
+
+export async function copernicusActivation(code) {
+  const url = `${COPERNICUS}/public-activations/?code=${encodeURIComponent(code)}`;
+  return getJSON(url, { snapshotKey: `copernicus-${code}` });
 }
 
 const [[S, W], [N, E]] = NEPAL.maxBounds;
