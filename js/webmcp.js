@@ -234,6 +234,135 @@ function specs(ctl) {
       },
     },
     {
+      name: "cross_reference_district",
+      description:
+        "THE ONE THAT MATTERS. Everything all six sources say about one district, side by side: the incident " +
+        "record's casualty totals, every river gauge with its headroom, every road closure with the households " +
+        "behind it, the international alert, the discharge forecast, and the satellite damage assessment — plus " +
+        "an explicit note wherever two sources disagree about how bad it is. Nepal publishes all of this and " +
+        "none of it together, so the comparison is the product: a district where Copernicus grades 431 of 441 " +
+        "buildings as affected while the incident record holds one injury is not a quiet district, it is a " +
+        "district whose reporting chain is underwater. Use for 'what is really happening in X', 'is the " +
+        "official record keeping up', 'can relief reach X', 'is this district worse than it looks'.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        type: "object",
+        properties: {
+          district: str("The district to cross-reference. " + DISTRICT_HINT),
+          includeNational: bool("Include GDACS alerts, which are scoped to the country rather than a district. Default true."),
+        },
+        required: ["district"],
+      },
+      execute: async ({ district, includeNational = true } = {}) => {
+        if (!district) return { summary: "Pass a district name. Call list_filter_options for the ones loaded now.", error: true };
+
+        const rows = windowed();
+        const here = rows.filter((r) => r.district === district);
+        if (!here.length) {
+          return {
+            summary:
+              `No records for ${district} in the current ${state.filters.days}-day window. That is what the ` +
+              `sources published, which is not the same as nothing having happened — widen the window with ` +
+              `filter_records, and check get_source_health before concluding the district is quiet.`,
+            district,
+            records: 0,
+          };
+        }
+
+        const of = (s) => here.filter((r) => r.source === s);
+        const sum = (list, key) => list.reduce((a, r) => a + (Number(r.metrics?.[key]) || 0), 0);
+
+        const incidents = of("incident");
+        const roads = of("road");
+        const damage = of("damage");
+
+        // Buildings graded from orbit, across every mapped area in the district.
+        let affected = 0, surveyed = 0, ungraded = 0;
+        for (const r of damage) {
+          const m = /^([\d,]+) of ([\d,]+)$/.exec(String(r.metrics["Buildings affected"] ?? ""));
+          if (m) { affected += Number(m[1].replace(/,/g, "")); surveyed += Number(m[2].replace(/,/g, "")); }
+          else ungraded += 1;
+        }
+
+        const deaths = sum(incidents, "Deaths");
+        const injured = sum(incidents, "Injured");
+        const missing = sum(incidents, "Missing");
+        const households = sum(roads, "Households cut off");
+
+        // Where two sources tell different stories about the same ground. Stated
+        // as a divergence to check, never as a conclusion: this page cannot know
+        // which source is right, only that a responder should not read one of
+        // them alone.
+        const divergence = [];
+        if (surveyed && incidents.length <= 2 && affected / surveyed > 0.25) {
+          divergence.push(
+            `Copernicus EMS graded ${affected.toLocaleString()} of ${surveyed.toLocaleString()} surveyed buildings ` +
+            `as affected here, while the incident record holds ${incidents.length} record(s) for the same window ` +
+            `(${deaths} dead, ${missing} missing, ${injured} injured). Satellite assessment does not depend on a ` +
+            `district officer being able to file, and the filing chain is what breaks when the roads are cut — ` +
+            `so treat the low incident count as a reporting lag to verify, not as evidence that the district is fine.`
+          );
+        }
+        if (ungraded) {
+          divergence.push(
+            `${ungraded} area(s) here have been imaged but not yet graded. Mapped is not undamaged — the ` +
+            `statistics follow the satellite pass by a day or more.`
+          );
+        }
+        for (const r of roads) {
+          const eta = r.metrics["Estimated reopening"], since = r.metrics["Blocked since"];
+          if (eta && since && new Date(eta) < Date.now() && !r.metrics["Actually reopened"]) {
+            divergence.push(
+              `${r.title} was due to reopen ${new Date(eta).toISOString().slice(0, 10)} and has not been marked ` +
+              `reopened. Either it is still shut and the estimate is stale, or it opened and nobody updated the ` +
+              `record; ${(Number(r.metrics["Households cut off"]) || 0).toLocaleString()} households are behind it either way.`
+            );
+          }
+        }
+        if (roads.length && damage.length) {
+          divergence.push(
+            `${households.toLocaleString()} households are behind a closure in the same district the satellite is ` +
+            `grading. Access and damage are being reported by different agencies; both bear on whether relief arrives.`
+          );
+        }
+
+        return {
+          summary:
+            `${district}: ${here.length} records across ${new Set(here.map((r) => r.source)).size} of 6 sources — ` +
+            `${incidents.length} incident(s) (${deaths} dead, ${missing} missing, ${injured} injured), ` +
+            `${of("river").length} gauge(s), ${roads.length} closure(s)` +
+            (households ? ` cutting off ${households.toLocaleString()} households` : "") +
+            (surveyed ? `, ${affected.toLocaleString()} of ${surveyed.toLocaleString()} buildings graded affected from orbit` : "") +
+            `.` + (divergence.length ? ` ${divergence.length} divergence(s) between sources — see below.` : ""),
+          district,
+          windowDays: state.filters.days,
+          incidents: { count: incidents.length, deaths, missing, injured, housesDestroyed: sum(incidents, "Houses destroyed"), records: incidents.map(brief) },
+          gauges: of("river").map(brief),
+          roads: roads.map((r) => ({
+            ...brief(r),
+            householdsCutOff: Number(r.metrics["Households cut off"]) || 0,
+            peopleBehind: Number(r.metrics["People behind it"]) || 0,
+            blockedSince: r.metrics["Blocked since"] ?? null,
+            estimatedReopening: r.metrics["Estimated reopening"] ?? null,
+            effortsUnderWay: r.metrics["Efforts under way"] || null,
+            contact: r.metrics.Contact || null,
+          })),
+          forecast: of("forecast").map(brief),
+          damage: damage.map((r) => ({
+            ...brief(r),
+            buildingsAffected: r.metrics["Buildings affected"] ?? "not yet graded",
+            sensor: r.metrics.Sensor ?? null,
+            imageAcquired: r.metrics["Image acquired"] ?? null,
+          })),
+          nationalAlerts: includeNational
+            ? rows.filter((r) => r.source === "alert").map((r) => ({ ...brief(r), scope: "national — GDACS scopes to the country, not the district" }))
+            : [],
+          divergence,
+          sources: sourceHealth(),
+        };
+      },
+    },
+    {
       name: "get_source_health",
       description:
         "Which of the six sources answered, which are serving a stored snapshot, and which are unreachable — " +
@@ -394,6 +523,7 @@ export const TOOL_NAMES = [
   "list_records",
   "get_record_details",
   "list_filter_options",
+  "cross_reference_district",
   "get_source_health",
   "filter_records",
   "select_record",
