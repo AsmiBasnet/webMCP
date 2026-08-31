@@ -75,7 +75,7 @@ const tools = await p.evaluate(async () =>
 );
 console.log("\n-- registered tools --");
 for (const t of tools) console.log(`  ${t.readOnly ? "read " : "WRITE"}  ${t.name}(${t.props.join(", ")})`);
-check("ten tools registered", tools.length === 10, `${tools.length}`);
+check("eleven tools registered", tools.length === 11, `${tools.length}`);
 check("every tool has a description", await p.evaluate(async () =>
   (await document.modelContext.getTools()).every((t) => (t.description ?? "").length > 80)));
 check("no tool surface leaked into the UI", await p.evaluate(() =>
@@ -104,6 +104,20 @@ const detail = await call("get_record_details", { id: ids[0] });
 check("get_record_details resolves an id", !/No record with id/.test(detail));
 const missing = await call("get_record_details", { id: "incident:does-not-exist" });
 check("unknown id fails honestly", /No record with id/.test(missing));
+
+// The cross-source tool: one district, every source that has anything to say
+// about it, and the divergences between them stated rather than smoothed over.
+const xdistrict = districts[0].name;
+const xref = await call("cross_reference_district", { district: xdistrict });
+console.log("  " + xref.split(String.fromCharCode(10))[0]);
+check(`cross_reference_district answers for ${xdistrict}`, new RegExp(`^${xdistrict}: [0-9]+ records across`).test(xref));
+check("...naming how many of the six sources spoke", /records across \d+ of 6 sources/.test(xref));
+check("...and separating national alerts from district records",
+  /"nationalAlerts"/.test(xref) && (!/"scope"/.test(xref) || /national — GDACS scopes to the country/.test(xref)));
+check("...and carrying a divergence list", /"divergence"/.test(xref));
+const empty = await call("cross_reference_district", { district: "Nowhere" });
+check("a district with no records is not reported as calm",
+  /not the same as nothing having happened/.test(empty));
 
 const before = await view();
 check("read tools changed nothing on screen", JSON.stringify(before) === JSON.stringify(await view()));
@@ -175,7 +189,7 @@ check("refresh_data refetches and reports source health", /Refetched\./.test(ref
 // --- honesty ---------------------------------------------------------------
 console.log("\n-- honesty --");
 check("every result carries the no-authority footer",
-  [summary, health, listing, detail, refreshed].every((t) => /issues no warnings and dispatches nothing/.test(t)));
+  [summary, health, listing, detail, refreshed, xref].every((t) => /issues no warnings and dispatches nothing/.test(t)));
 check("write tools declare themselves as write",
   tools.filter((t) => !t.readOnly).map((t) => t.name).sort().join() ===
   "filter_records,focus_map,refresh_data,reset_view,select_record");

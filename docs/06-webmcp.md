@@ -115,7 +115,7 @@ Points worth knowing:
 
 `public/js/webmcp.js`, registered from `dash.js` after the first load.
 
-**Ten tools. Five read, five write.**
+**Eleven tools. Six read, five write.**
 
 | Tool | | What it does |
 |---|---|---|
@@ -123,12 +123,45 @@ Points worth knowing:
 | `list_records` | read | The rows on screen, worst first, with the ids the other tools need |
 | `get_record_details` | read | Every field one source published for one record, its provenance, optionally the raw payload |
 | `list_filter_options` | read | The district and hazard names `filter_records` will actually accept right now |
+| `cross_reference_district` | read | Everything all six sources say about one district, side by side, with the divergences between them named |
 | `get_source_health` | read | Which of the six sources are live, on snapshot, or unreachable — and how old the data is |
 | `filter_records` | **write** | Sources, severities, window, district, type, search, sort — the whole filter bar, composable |
 | `select_record` | **write** | Opens a record's drill-down panel and pans the map to it |
 | `focus_map` | **write** | Moves the map only: a district, coordinates, or back out to all of Nepal |
 | `reset_view` | **write** | Back to how the page opens |
 | `refresh_data` | **write** | Refetch all six sources now |
+
+### The one that earns the exercise
+
+`cross_reference_district` is why the tool surface is worth building rather than leaving an agent
+to scrape the list. The other ten answer questions about the page; this one answers the question
+the page was built for.
+
+Nepal publishes six disaster feeds and none of them together. Each is internally consistent and
+none of them knows what the others are saying about the same valley on the same day. Asked about
+Rasuwa during the August 2026 GLOF flood, the tool returns in one answer: Copernicus EMS grading
+**864 of 1,000 surveyed buildings** affected across Syapru Besi and Timure; the BIPAD incident
+record holding **one** record for the same window, an injury at Gosaikunda; NH42 to Rasuwagadhi
+closed since 26 August with **7,025 households / 27,094 people** behind it, cause filed as *"Huge
+flood from Tibet Region has swept away entire river route road"*; one gauge; one forecast; and the
+GDACS Orange alert, flagged **national scope** rather than silently treated as a district record.
+
+Then it names the divergences:
+
+> Copernicus EMS graded 864 of 1,000 surveyed buildings as affected here, while the incident record
+> holds 1 record for the same window (0 dead, 0 missing, 1 injured). Satellite assessment does not
+> depend on a district officer being able to file, and the filing chain is what breaks when the
+> roads are cut — so treat the low incident count as a reporting lag to verify, not as evidence
+> that the district is fine.
+
+It computes three kinds of divergence: satellite damage against a near-silent incident record; an
+area imaged but not yet graded (*mapped is not undamaged*); and a closure whose estimated reopening
+has passed with no reopening recorded — which surfaced Mechi Rajmarg, logged with a five-hour
+repair estimate and still not marked reopened 53 days later, with 99,910 households behind it.
+
+Every one of those is stated as **a divergence to check, never as a conclusion**. The page cannot
+know which source is right. It can know that a responder reading one of them alone is missing
+something, and say so.
 
 ### The rules they were written to
 
@@ -193,14 +226,16 @@ console who should not have to quote JSON to try something.
 
 ```bash
 npm run serve            # http://127.0.0.1:8787
-npm run test:webmcp      # 34 assertions: tools registered, and the page moves
+npm run test:webmcp      # 39 assertions: tools registered, and the page moves
 ```
 
 In the browser console on the live page:
 
 ```js
-await document.modelContext.getTools();                       // ten tools
+await document.modelContext.getTools();                       // eleven tools
 await document.modelContext.executeTool('get_situation_summary', '{}');
+await document.modelContext.executeTool('filter_records', '{"window":7}');
+await document.modelContext.executeTool('cross_reference_district', '{"district":"Rasuwa"}');
 await document.modelContext.executeTool('filter_records', '{"sources":["road"],"sort":"severity"}');
 ```
 
