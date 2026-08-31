@@ -1,4 +1,4 @@
-// One feed out of five sources.
+// One feed out of six sources.
 //
 // Every source publishes a different shape, on a different cadence, with a
 // different idea of what "severity" means. This file is the only place that
@@ -16,7 +16,7 @@ import {
 import { incidentDistrict, incidentMunicipality, hazardName, nearestDistrict } from "./refdata.js";
 import { distanceKm } from "./api.js";
 
-/** The five sources, in the order they appear in the filter bar. */
+/** The six sources, in the order they appear in the filter bar. */
 export const SOURCES = [
   { id: "incident", label: "Incidents",  origin: "BIPAD / NDRRMA",              cadence: "as district officers file" },
   { id: "river",    label: "Gauges",     origin: "DHM via BIPAD",               cadence: "every 10 min" },
@@ -341,7 +341,7 @@ function damageTotals(stats) {
   return { rows: out, buildingsTotal: total, buildingsAffected: affected };
 }
 
-function fromDamage(activation, aoi) {
+export function fromDamage(activation, aoi) {
   // An AOI can carry several products — an initial grading and later monitoring
   // passes. The newest image is the one that describes the ground now.
   const products = aoi.products ?? [];

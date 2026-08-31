@@ -3,12 +3,15 @@
 Every prompt below has been run against the live APIs. Where a result is quoted, that is what actually
 came back on 30 August 2026 — figures will have moved by the time you read this.
 
+The live view at `index.html` needs no prompts — it is filters. This file is for `explore.html`,
+where the same data is exposed as tools.
+
 There are two ways to ask, and they are not the same thing:
 
 | | Where | What it is |
 |---|---|---|
 | **Ask box** | `explore.html`, the input at the top | A deterministic keyword router. No model. It tells you what it matched and cannot invent a filter. |
-| **Agent** | An agent with WebMCP, on `explore.html` | Reads the twelve tool descriptions and composes calls. This is the real surface. |
+| **Agent** | An agent with WebMCP, on `explore.html` | Reads the thirteen tool descriptions and composes calls. This is the real surface. |
 
 The ask box exists so the page works with no agent at all. Prompts marked **agent** need one — they
 compose several tools, which a keyword router cannot do.
@@ -22,9 +25,8 @@ These four show the most in the least time.
 ```
 What is happening in Nepal right now?
 ```
-→ `get_current_situation`. The only tool that crosses all four feeds — incidents, gauges, roads,
-GDACS — in one answer. Ranks districts by lives, then carries in any district with a road still
-closed. This is also the view the page opens on.
+→ `get_current_situation`. The only tool that crosses four feeds — incidents, gauges, roads, GDACS —
+in one answer. Ranks districts by lives, then carries in any district with a road still closed.
 
 ```
 Which municipalities have flood incidents but no evacuation centre?
@@ -44,6 +46,13 @@ How many people have died in floods in Sindhupalchok since 2015, by year?
 → `get_casualty_breakdown`, split by sex and by disability. BIPAD records both fields and publishes
 neither.
 
+```
+How many buildings were destroyed in Rasuwa?
+```
+→ `get_damage_assessment`. **Timure: 431 of 441 buildings affected, 98%** — counted from satellite
+imagery by Copernicus EMS, not from a field report. Ask this whenever the incident record looks
+implausibly quiet for a large event, which is exactly what it looked like during this flood.
+
 ---
 
 ## By tool
@@ -57,6 +66,20 @@ What is going on?
 Give me an overview of the last two days.
 Which districts are worst affected?
 ```
+
+### `get_damage_assessment` — buildings counted from orbit
+
+```
+How many buildings were destroyed in Rasuwa?
+Is there satellite damage assessment for this flood?
+How much damage was there?
+Show me the Copernicus grading.
+```
+One row per mapped area of interest, ranked by the share of surveyed buildings affected. An area that
+has been mapped but not yet graded says so — mapped is not the same as undamaged.
+
+Copernicus sends no CORS header, so in a browser without a proxy this answers from the build-time
+snapshot; the provenance block on the result says which.
 
 ### `query_incidents` — the record itself
 
@@ -178,11 +201,12 @@ with 119,511 households behind a closed highway and no recorded fatality.
 **The one that exposes the lag.** *(agent)*
 ```
 How many people has BIPAD recorded as killed in Nepal in the last seven days? Now compare that with
-what news sources report for the Bhote Koshi flood, and explain the gap.
+the Copernicus satellite damage assessment for the same flood, and explain the gap.
 ```
-BIPAD says ~10. The Nepal Police bulletin says 768. Both are government sources. A good answer
-identifies BIPAD as a district-officer reporting pipeline that does not update during an emergency —
-and does not average the two.
+BIPAD says ~10 deaths. Copernicus graded 441 buildings in Timure alone and found 431 affected. Both
+are official sources; one is a district-officer reporting pipeline that does not update during an
+emergency, and the other is a satellite. A good answer names that difference rather than averaging
+the two — and this is the question the whole project exists to make askable.
 
 **Preparedness, argued from absence.** *(agent)*
 ```

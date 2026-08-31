@@ -14,7 +14,7 @@ Two pages, sharing one data layer:
   severity, district, type, window and free text; click any record for every field the source
   published, its provenance, and the raw payload.
 - **`explore.html`** — the same data as [WebMCP](https://github.com/webmachinelearning/webmcp) tools,
-  so an agent can query it in a sentence. Twelve tools, plus a deterministic keyword ask box for
+  so an agent can query it in a sentence. Thirteen tools, plus a deterministic keyword ask box for
   browsers with no agent.
 
 Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Devpost, 2026).
@@ -46,6 +46,9 @@ row for the whole activation would hide which valley is worst. As of the last ca
 It takes two calls, since the activation list carries no geometry and no statistics and each open
 activation's detail is fetched separately. It is also the one source that cannot be read from a
 browser at all.
+
+The explorer exposes the same data as `get_damage_assessment`, so an agent can ask *"how many
+buildings were destroyed in Rasuwa"* and get the satellite count rather than the incident record's.
 
 Each source is fetched in parallel, and **a source that fails does not fail the load**. An unreachable
 gauge network is no reason to hide the road closures; the failure is named in the status bar and the
@@ -204,7 +207,7 @@ public/
     dash.js           filter bar, list, drill-down, map, refresh loop
     api.js            fetch, memo, snapshot fallback, provenance, coordinate guard
     refdata.js        name → id, ward → municipality → district
-    tools.js          the twelve tools
+    tools.js          the thirteen tools
     webmcp.js         tool specs and document.modelContext registration
     ask.js            deterministic keyword router (no model)
     app.js            explorer boot

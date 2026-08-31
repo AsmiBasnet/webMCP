@@ -72,6 +72,13 @@ export function route(question) {
       matched, "national situation");
   }
 
+  // Satellite damage assessment. Checked before the gap branch, which would
+  // otherwise catch "how many buildings were destroyed" on the word "destroyed".
+  if (has(q, "satellite", "copernicus", "ems", "buildings destroyed", "buildings damaged",
+             "damage assessment", "how much damage", "how many buildings", "destroyed buildings")) {
+    return done("get_damage_assessment", { ...withPlace("district") }, matched, "satellite damage");
+  }
+
   if (has(q, "no evacuation", "without", "missing", "gap", "lack", "lacking", "don't have",
              "do not have", "none registered", "unregistered", "no shelter", "no registered",
              "with no ", "no health", "no hospital", "no open space", "no facility", "not covered")) {
