@@ -18,6 +18,23 @@ No build step, no bundler, no keys, no server — five ES modules and a styleshe
 
 ---
 
+## Two implementations in this repository
+
+This repository holds two takes on SankatSathi, merged rather than reconciled, because they answer
+different questions and neither is a draft of the other.
+
+| | Where | What it is |
+|---|---|---|
+| **Live data view** | `public/` | This README. Six live public sources, normalised into one filterable record type, with eleven WebMCP tools over the same state. Real endpoints, no mock data. |
+| **Command-centre prototype** | `index.html`, `app.js`, `agent.js`, `webmcp.js`, `style.css` at the repository root | An agent-operable flood-response command centre — SOS queues, relief depot inventories, dispatch routing — over authored scenario data. Its README is preserved at [`docs/07-command-center-prototype.md`](docs/07-command-center-prototype.md). |
+
+They share a name, a subject and the WebMCP idea, and nothing else: no shared modules, no shared
+data, no shared build. The paths do not collide — the root `webmcp.js` and `public/js/webmcp.js`
+are different files serving different pages, as are the two `index.html`. `npm run serve` and the
+deploy script both serve `public/`; open the root `index.html` directly to run the prototype.
+
+---
+
 ## The six sources
 
 | Source | Origin | Endpoint | Publishes |

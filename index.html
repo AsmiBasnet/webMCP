@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SankatSathi - WebMCP Nepal Flood Command Center</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome for high-quality symbols -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Top Glowing Header Bar -->
+    <header class="app-header">
+        <div class="header-logo">
+            <span class="logo-icon"><i class="fa-solid fa-house-flood-water"></i></span>
+            <div class="logo-text">
+                <h1>SANKATSATHI <span class="nepali-text">संकट साथी</span></h1>
+                <p>WebMCP Flood Response & Resource Command Center</p>
+            </div>
+        </div>
+        
+        <div class="header-status">
+            <div class="status-indicator">
+                <span class="pulse-dot red"></span>
+                <span class="status-label">SIMULATION RUNNING</span>
+            </div>
+            <div class="webmcp-indicator">
+                <span class="pulse-dot green" id="webmcp-dot"></span>
+                <span class="status-label" id="webmcp-label">WEBMCP ACTIVE</span>
+            </div>
+            <button class="btn btn-secondary" id="btn-trigger-sos">
+                <i class="fa-solid fa-triangle-exclamation"></i> Trigger SOS
+            </button>
+            <button class="btn btn-secondary" id="btn-settings" title="API Configuration">
+                <i class="fa-solid fa-cog"></i> API Key
+            </button>
+        </div>
+    </header>
+
+    <!-- Collapsible Settings Panel (Gemini API Key Setup) -->
+    <div class="settings-drawer collapsed" id="settings-drawer">
+        <div class="drawer-header">
+            <h3><i class="fa-solid fa-key"></i> Gemini API Settings</h3>
+            <button class="btn-close" id="btn-close-settings">&times;</button>
+        </div>
+        <div class="drawer-body">
+            <p>SankatSathi runs WebMCP native tools. To test with a live client-side Gemini Agent, enter your Gemini API Key. If left empty, the dashboard runs in <strong>Local Simulation Mode</strong>.</p>
+            <div class="form-group">
+                <label for="gemini-key">Gemini API Key:</label>
+                <div class="input-wrapper">
+                    <input type="password" id="gemini-key" placeholder="AIzaSy...">
+                    <button class="btn-toggle-visibility" id="btn-toggle-key"><i class="fa-solid fa-eye"></i></button>
+                </div>
+            </div>
+            <div class="drawer-actions">
+                <button class="btn btn-primary" id="btn-save-key">Save Configuration</button>
+                <button class="btn btn-secondary" id="btn-clear-key">Clear Key</button>
+            </div>
+            <div class="api-notice">
+                <i class="fa-solid fa-shield-halved"></i> Key is stored securely in <code>localStorage</code> only and never sent to any server except the official Google Gemini API endpoint.
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Body Grid -->
+    <main class="dashboard-grid">
+        
+        <!-- Left Panel: Incoming Crisis Feed -->
+        <section class="panel panel-left flex-column">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-tower-broadcast text-red"></i> Emergency SOS Queue</h2>
+                <span class="badge" id="sos-count">0 pending</span>
+            </div>
+            <div class="panel-body flex-grow scrollable" id="sos-queue-list">
+                <!-- SOS Cards will populate here dynamically -->
+                <div class="empty-state">
+                    <i class="fa-solid fa-circle-check text-green"></i>
+                    <p>No active distress signals. Rivers stable.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center Panel: Nepal Crisis Routing Map -->
+        <section class="panel panel-center flex-column">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-map-location-dot text-blue"></i> Flood Inundation & Routing Map</h2>
+                <div class="map-legend">
+                    <span class="legend-item"><span class="color-box critical"></span> Critical</span>
+                    <span class="legend-item"><span class="color-box warning"></span> Alert</span>
+                    <span class="legend-item"><span class="color-box normal"></span> Monitored</span>
+                </div>
+            </div>
+            <div class="panel-body flex-grow map-container" id="map-parent">
+                <!-- SVG Stylized Nepal Map -->
+                <svg id="nepal-map" viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Grid Background Overlay -->
+                    <defs>
+                        <pattern id="map-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255, 255, 255, 0.03)" stroke-width="1"/>
+                        </pattern>
+                        <radialGradient id="glow-red" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#ff3e3e" stop-opacity="0.3"/>
+                            <stop offset="100%" stop-color="#ff3e3e" stop-opacity="0"/>
+                        </radialGradient>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#map-grid)"/>
+
+                    <!-- Rivers (Major flood paths) -->
+                    <g id="rivers" opacity="0.6">
+                        <!-- Bagmati River -->
+                        <path d="M 330 50 Q 340 120 330 180 T 360 270 T 350 400" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" />
+                        <!-- Saptakoshi River (East) -->
+                        <path d="M 640 40 Q 610 140 600 200 T 630 290 T 610 420" fill="none" stroke="#2563eb" stroke-width="6" stroke-linecap="round" />
+                        <!-- Koshi Tributaries -->
+                        <path d="M 530 30 Q 560 100 600 200" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" />
+                        <path d="M 700 50 Q 670 120 630 290" fill="none" stroke="#2563eb" stroke-width="3" stroke-linecap="round" />
+                    </g>
+
+                    <!-- Mountains (Visual styling) -->
+                    <g id="mountains" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2">
+                        <!-- Everest region -->
+                        <polygon points="560,110 580,70 600,110" />
+                        <polygon points="585,115 605,65 625,115" />
+                        <!-- Langtang region -->
+                        <polygon points="380,100 400,60 420,100" />
+                        <polygon points="405,105 420,70 435,105" />
+                    </g>
+
+                    <!-- Nepal District Regions (Stylized nodes) -->
+                    <g id="district-zones">
+                        <!-- Kathmandu District Node -->
+                        <g class="district-node" id="node-Kathmandu" transform="translate(330, 180)">
+                            <circle class="district-bg" r="35" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <circle class="district-pulse" r="12" />
+                            <text y="-42" text-anchor="middle" class="district-label">Kathmandu</text>
+                            <text y="5" text-anchor="middle" class="district-water-label" id="water-Kathmandu">0.8m</text>
+                        </g>
+
+                        <!-- Lalitpur District Node -->
+                        <g class="district-node" id="node-Lalitpur" transform="translate(320, 240)">
+                            <circle class="district-bg" r="30" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <circle class="district-pulse" r="10" />
+                            <text y="38" text-anchor="middle" class="district-label">Lalitpur</text>
+                            <text y="5" text-anchor="middle" class="district-water-label" id="water-Lalitpur">0.9m</text>
+                        </g>
+
+                        <!-- Sindhupalchok District Node -->
+                        <g class="district-node" id="node-Sindhupalchok" transform="translate(420, 140)">
+                            <circle class="district-bg" r="35" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <circle class="district-pulse" r="10" />
+                            <text y="-42" text-anchor="middle" class="district-label">Sindhupalchok</text>
+                            <text y="5" text-anchor="middle" class="district-water-label" id="water-Sindhupalchok">0.5m</text>
+                        </g>
+
+                        <!-- Rautahat District Node (Terai) -->
+                        <g class="district-node" id="node-Rautahat" transform="translate(350, 340)">
+                            <circle class="district-bg" r="35" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <circle class="district-pulse" r="14" />
+                            <text y="48" text-anchor="middle" class="district-label">Rautahat</text>
+                            <text y="5" text-anchor="middle" class="district-water-label" id="water-Rautahat">1.8m</text>
+                        </g>
+
+                        <!-- Siraha District Node (Terai) -->
+                        <g class="district-node" id="node-Siraha" transform="translate(480, 360)">
+                            <circle class="district-bg" r="30" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <circle class="district-pulse" r="12" />
+                            <text y="42" text-anchor="middle" class="district-label">Siraha</text>
+                            <text y="5" text-anchor="middle" class="district-water-label" id="water-Siraha">1.4m</text>
+                        </g>
+
+                        <!-- Saptari District Node (Koshi River region) -->
+                        <g class="district-node" id="node-Saptari" transform="translate(580, 350)">
+                            <circle class="district-bg" r="40" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <circle class="district-pulse" r="16" />
+                            <text y="52" text-anchor="middle" class="district-label">Saptari</text>
+                            <text y="5" text-anchor="middle" class="district-water-label" id="water-Saptari">2.5m</text>
+                        </g>
+                    </g>
+
+                    <!-- Relief Centers Icons on Map -->
+                    <g id="depot-nodes">
+                        <!-- Kathmandu Depot -->
+                        <g class="depot-marker" transform="translate(305, 160)" id="marker-depot-kathmandu">
+                            <rect x="-8" y="-8" width="16" height="16" rx="3" fill="#10b981" stroke="#fff" stroke-width="1.5"/>
+                            <text x="12" y="4" class="depot-label">KTM Depot</text>
+                        </g>
+                        <!-- Janakpur Depot -->
+                        <g class="depot-marker" transform="translate(430, 310)" id="marker-depot-janakpur">
+                            <rect x="-8" y="-8" width="16" height="16" rx="3" fill="#10b981" stroke="#fff" stroke-width="1.5"/>
+                            <text x="12" y="4" class="depot-label">Janakpur Depot</text>
+                        </g>
+                        <!-- Biratnagar Depot -->
+                        <g class="depot-marker" transform="translate(640, 310)" id="marker-depot-biratnagar">
+                            <rect x="-8" y="-8" width="16" height="16" rx="3" fill="#10b981" stroke="#fff" stroke-width="1.5"/>
+                            <text x="12" y="4" class="depot-label">Biratnagar Depot</text>
+                        </g>
+                    </g>
+
+                    <!-- Routing Animations Layer -->
+                    <g id="map-routes-layer"></g>
+
+                    <!-- Stranded Citizen Marks Layer -->
+                    <g id="stranded-markers-layer"></g>
+                </svg>
+            </div>
+        </section>
+
+        <!-- Right Panel: Resources & Broadcasts -->
+        <section class="panel panel-right flex-column">
+            
+            <!-- Resource Depots Panel -->
+            <div class="panel-section flex-column" style="height: 55%;">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-parachute-box text-green"></i> Regional Rescue Depots</h2>
+                </div>
+                <div class="panel-body scrollable flex-grow" id="depots-inventory">
+                    <!-- Depots lists populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Emergency SMS Broadcast Feed -->
+            <div class="panel-section flex-column" style="height: 45%; margin-top: 15px;">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-comment-sms text-orange"></i> SMS Alert Broadcasts</h2>
+                    <span class="badge badge-warning" id="sms-broadcast-count">0 sent</span>
+                </div>
+                <div class="panel-body scrollable flex-grow" id="sms-broadcasts-feed">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-radio text-muted"></i>
+                        <p>No safety broadcast transmissions logged yet.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Bottom Panel: WebMCP Telemetry, Registered Tools & Dispatch Rationale -->
+    <section class="bottom-panel-grid">
+        <!-- Telemetry Log -->
+        <div class="panel telemetry-panel flex-column">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-terminal text-blue"></i> WebMCP Telemetry Log</h2>
+                <button class="btn btn-mini" id="btn-clear-telemetry"><i class="fa-solid fa-trash"></i> Clear</button>
+            </div>
+            <div class="panel-body telemetry-console font-mono scrollable flex-grow" id="telemetry-log">
+                <div class="tel-row system-msg">[System] SankatSathi initialized. WebMCP registers client-side tools automatically.</div>
+                <div class="tel-row system-msg">[System] WebMCP hooks mounted on `document.modelContext`. Waiting for AI instructions...</div>
+            </div>
+        </div>
+
+        <!-- Registered WebMCP Tools Checklists -->
+        <div class="panel tools-panel flex-column">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-list-check text-green"></i> Exposed WebMCP Tools</h2>
+            </div>
+            <div class="panel-body flex-grow scrollable" id="webmcp-tools-list">
+                <div class="tool-expose-card">
+                    <div class="tool-header">
+                        <span class="tool-name">get_active_sos_alerts</span>
+                        <span class="tool-badge">READ</span>
+                    </div>
+                    <p class="tool-desc">Retrieves list of unresolved citizen emergency distress signals.</p>
+                </div>
+                <div class="tool-expose-card">
+                    <div class="tool-header">
+                        <span class="tool-name">get_relief_resources</span>
+                        <span class="tool-badge">READ</span>
+                    </div>
+                    <p class="tool-desc">Fetches inventories of boats, medical squads, and food packs in each rescue base.</p>
+                </div>
+                <div class="tool-expose-card">
+                    <div class="tool-header">
+                        <span class="tool-name">get_safest_route</span>
+                        <span class="tool-badge">CALCULATE</span>
+                    </div>
+                    <p class="tool-desc">Returns distance and flood water hazard risk levels of alternative routes.</p>
+                </div>
+                <div class="tool-expose-card">
+                    <div class="tool-header">
+                        <span class="tool-name">dispatch_relief</span>
+                        <span class="tool-badge write">WRITE</span>
+                    </div>
+                    <p class="tool-desc">Allocates assets to active SOS, decrements inventory, draws route on map.</p>
+                </div>
+                <div class="tool-expose-card">
+                    <div class="tool-header">
+                        <span class="tool-name">broadcast_safety_message</span>
+                        <span class="tool-badge write">WRITE</span>
+                    </div>
+                    <p class="tool-desc">Sends urgent emergency warnings to all civilian devices in a district.</p>
+                </div>
+                <div class="tool-expose-card">
+                    <div class="tool-header">
+                        <span class="tool-name">explain_dispatch_decision</span>
+                        <span class="tool-badge write">WRITE</span>
+                    </div>
+                    <p class="tool-desc">Posts dispatch rationale cards directly onto the operator's monitor.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dispatch Rationale & Decisions -->
+        <div class="panel decisions-panel flex-column">
+            <div class="panel-header">
+                <h2><i class="fa-solid fa-brain text-purple"></i> Decision Rationale Log</h2>
+                <span class="badge badge-purple" id="decisions-count">0 logged</span>
+            </div>
+            <div class="panel-body scrollable flex-grow" id="decision-rationales">
+                <div class="empty-state">
+                    <i class="fa-solid fa-scroll text-muted"></i>
+                    <p>No dispatch rationales recorded yet. Waiting for AI decision tool call.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Floating AI Command Widget (Local Sandbox) -->
+    <div class="ai-widget collapsed" id="ai-widget">
+        <button class="ai-widget-trigger" id="btn-toggle-ai">
+            <i class="fa-solid fa-robot"></i>
+            <span class="trigger-text">AI Operations Co-pilot</span>
+            <i class="fa-solid fa-chevron-up toggle-icon"></i>
+        </button>
+        <div class="ai-widget-content">
+            <div class="ai-chat-header">
+                <h3><i class="fa-solid fa-robot"></i> Local Agent Sandbox</h3>
+                <span class="ai-mode-badge" id="ai-mode-status">SIMULATOR ACTIVE</span>
+            </div>
+            <div class="ai-chat-messages scrollable" id="ai-chat-messages">
+                <div class="chat-msg ai">
+                    <div class="msg-sender">SankatSathi Agent</div>
+                    <div class="msg-text">
+                        Namaste! I am the local command co-pilot. I have full programmatic control of this dashboard through its WebMCP tools. 
+                        <br><br>
+                        Select a task preset below or type a instruction to run my decision loop:
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Presets Panel -->
+            <div class="ai-presets">
+                <p>Task Presets:</p>
+                <div class="preset-buttons">
+                    <button class="btn-preset" data-command="Run triage: find critical alerts with children, assess route hazards, and dispatch the closest boats.">
+                        <i class="fa-solid fa-bolt"></i> Auto Triage All
+                    </button>
+                    <button class="btn-preset" data-command="Assess safety routes for Lalitpur SOS alerts and dispatch a medical team.">
+                        <i class="fa-solid fa-truck-medical"></i> Route Medical to Lalitpur
+                    </button>
+                    <button class="btn-preset" data-command="Find all alerts in high flood zones and broadcast an evacuation notice.">
+                        <i class="fa-solid fa-bullhorn"></i> Send Evacuation Notices
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Input form -->
+            <form class="ai-chat-input-form" id="ai-chat-form">
+                <input type="text" id="ai-user-input" placeholder="Coordinate dispatch operations..." autocomplete="off">
+                <button type="submit" class="btn btn-primary" id="btn-send-ai"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- WebMCP Scripts -->
+    <script src="app.js"></script>
+    <script src="webmcp.js"></script>
+    <script src="agent.js"></script>
+</body>
+</html>
