@@ -6,9 +6,6 @@
 <title>SankatSathi — live disaster data for Nepal, from six sources</title>
 <meta name="description" content="Incidents, river gauges, road closures, GDACS alerts, GloFAS forecasts and Copernicus EMS damage assessment for Nepal in one filterable live view. Every record carries its source and its age.">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="dash.css">
 <script>document.documentElement.className="js"</script>
@@ -17,65 +14,75 @@
 <body>
 
 <header>
-  <h1 class="wordmark">SankatSathi <span>संकट साथी</span></h1>
-  <p class="sub">Live disaster data for Nepal — incidents, gauges, roads, alerts, forecasts and satellite damage assessment in one view.</p>
+  <div class="wrap">
+    <h1 class="wordmark">SankatSathi <span>संकट साथी</span></h1>
+    <p class="sub">Live disaster data for Nepal, from six public sources.</p>
+    <a class="link" href="https://bipadportal.gov.np" rel="noopener">bipadportal.gov.np</a>
+  </div>
 </header>
 
 <!-- Per-source freshness. Rendered by dash.js; never hidden, never collapsed. -->
-<div id="status">Loading…</div>
-
-<div class="filters">
-  <div class="fgroup">
-    <span class="flabel">Source</span>
-    <span id="f-sources"></span>
-  </div>
-
-  <div class="fgroup">
-    <span class="flabel">Severity</span>
-    <span id="f-sev"></span>
-  </div>
-
-  <div class="fgroup">
-    <label class="flabel" for="f-days" title="Filters dated events — incidents and alerts. Gauge readings, forecasts and roadblocks still in force describe the present, so they are always shown.">Window</label>
-    <select id="f-days">
-      <option value="1">Today</option>
-      <option value="2" selected>Today + yesterday</option>
-      <option value="7">Last 7 days</option>
-      <option value="30">Last 30 days</option>
-      <option value="90">Last 90 days</option>
-    </select>
-  </div>
-
-  <div class="fgroup">
-    <label class="flabel" for="f-district">District</label>
-    <select id="f-district"></select>
-  </div>
-
-  <div class="fgroup">
-    <label class="flabel" for="f-kind">Type</label>
-    <select id="f-kind"></select>
-  </div>
-
-  <div class="fgroup">
-    <label class="flabel" for="f-sort">Sort</label>
-    <select id="f-sort">
-      <option value="recency" selected>Today first</option>
-      <option value="severity">Severity</option>
-      <option value="time">Most recent</option>
-    </select>
-  </div>
-
-  <div class="fgroup">
-    <input type="search" id="f-search" placeholder="Search titles, places…" aria-label="Search records">
-  </div>
-
-  <span class="spacer"></span>
-  <span id="count"></span>
-  <button type="button" class="act" id="reset">Reset</button>
-  <button type="button" class="act" id="refresh">Refresh</button>
+<div class="statusbar">
+  <div class="wrap"><div id="status">Loading…</div></div>
 </div>
 
-<main>
+<!-- Counts for what is on screen right now. Rendered by dash.js. -->
+<div class="wrap"><div id="summary" aria-label="Summary of the current view"></div></div>
+
+<div class="wrap">
+  <div class="filters">
+    <div class="fgroup">
+      <span class="flabel">Source</span>
+      <span id="f-sources"></span>
+    </div>
+
+    <div class="fgroup">
+      <span class="flabel">Severity</span>
+      <span id="f-sev"></span>
+    </div>
+
+    <div class="fgroup">
+      <label class="flabel" for="f-days" title="Filters dated events — incidents and alerts. Gauge readings, forecasts and roadblocks still in force describe the present, so they are always shown.">Window</label>
+      <select id="f-days">
+        <option value="1">Today</option>
+        <option value="2" selected>Today + yesterday</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+      </select>
+    </div>
+
+    <div class="fgroup">
+      <label class="flabel" for="f-district">District</label>
+      <select id="f-district"></select>
+    </div>
+
+    <div class="fgroup">
+      <label class="flabel" for="f-kind">Type</label>
+      <select id="f-kind"></select>
+    </div>
+
+    <div class="fgroup">
+      <label class="flabel" for="f-sort">Sort</label>
+      <select id="f-sort">
+        <option value="recency" selected>Today first</option>
+        <option value="severity">Severity</option>
+        <option value="time">Most recent</option>
+      </select>
+    </div>
+
+    <div class="fgroup">
+      <input type="search" id="f-search" placeholder="Search titles, places…" aria-label="Search records">
+    </div>
+
+    <span class="spacer"></span>
+    <span id="count"></span>
+    <button type="button" class="act" id="reset">Reset</button>
+    <button type="button" class="act" id="refresh">Refresh</button>
+  </div>
+</div>
+
+<main class="wrap">
   <section class="pane pane--list" aria-label="Records">
     <div id="rows"></div>
   </section>
@@ -86,7 +93,20 @@
   </section>
 </main>
 
-<div class="nojs">
+<footer class="wrap">
+  <p>
+    SankatSathi issues no orders and sends no alerts. It shows what six public sources published,
+    with their provenance and their age attached.
+  </p>
+  <p>
+    Emergencies in Nepal: <a href="tel:100">100</a> Police ·
+    <a href="tel:102">102</a> Ambulance ·
+    <a href="tel:1234">1234</a> district disaster hotline ·
+    <a href="tel:1149">1149</a> National Emergency Operation Centre.
+  </p>
+</footer>
+
+<div class="nojs wrap">
   <h2>This page needs JavaScript.</h2>
   <p>
     It is a live view over six APIs — Nepal's BIPAD incident record, DHM river gauges, Department of

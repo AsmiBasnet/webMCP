@@ -129,6 +129,41 @@ function renderStatus(visible = null) {
 }
 
 // ---------------------------------------------------------------------------
+// Summary tiles
+// ---------------------------------------------------------------------------
+
+// The three severities worth a headline, in the order they should be read.
+const TILES = [
+  { sev: "critical", label: "critical" },
+  { sev: "serious", label: "serious" },
+  { sev: "warning", label: "warning" },
+];
+
+/** Counts for what is in the window, not what was fetched — same rule as the
+ *  status bar, so the tiles can never contradict the list below them. */
+function renderSummary(windowed) {
+  const el = $("#summary");
+  if (!el) return;
+
+  const tiles = TILES.map((t) => {
+    const count = windowed.filter((r) => r.severity === t.sev).length;
+    // Pressed when the severity filter has been narrowed to exactly this one.
+    const only = state.filters.severities.size === 1 && state.filters.severities.has(t.sev);
+    return `<button type="button" class="tile tile--${t.sev}" data-tile-sev="${t.sev}" aria-pressed="${only}"
+      title="Show only ${esc(t.label)} records"><b>${count}</b>${esc(t.label)}</button>`;
+  }).join("");
+
+  const districts = new Set(windowed.map((r) => r.district).filter(Boolean)).size;
+  const live = SOURCES.length - new Set(state.errors.map((e) => e.source)).size;
+
+  el.innerHTML =
+    `<span class="sum-total"><b>${windowed.length}</b> records in window</span>` +
+    tiles +
+    `<span class="sum-sub">${districts} district${districts === 1 ? "" : "s"} · ` +
+    `${live} of ${SOURCES.length} sources answering</span>`;
+}
+
+// ---------------------------------------------------------------------------
 // Filters
 // ---------------------------------------------------------------------------
 
@@ -300,7 +335,7 @@ function forecastSpark(series) {
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
          aria-label="Discharge from ${esc(pts[0].date)} to ${esc(pts[pts.length - 1].date)}, ${min.toFixed(1)} to ${max.toFixed(1)} cubic metres per second">
       ${tx ? `<line x1="${tx}" y1="0" x2="${tx}" y2="${H}" stroke="var(--ink-3)" stroke-dasharray="2 3"/>` : ""}
-      <path d="${d}" fill="none" stroke="var(--water)" stroke-width="2"/>
+      <path d="${d}" fill="none" stroke="var(--info)" stroke-width="2"/>
     </svg>
     <figcaption>${esc(pts[0].date)} → ${esc(pts[pts.length - 1].date)} · ${min.toFixed(1)}–${max.toFixed(1)} m³/s · dashed line is today</figcaption>
   </figure>`;
@@ -312,16 +347,19 @@ function forecastSpark(series) {
 
 function initMap() {
   if (typeof L === "undefined") return;
-  map = L.map("map", { scrollWheelZoom: false }).setView([28.2, 84.5], 7);
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+  // Scroll wheel, buttons, double-click, pinch — all the usual ways to zoom.
+  map = L.map("map", { scrollWheelZoom: true, zoomControl: true }).setView([28.2, 84.5], 7);
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
     { maxZoom: 16, attribution: "Tiles &copy; Esri" }).addTo(map);
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
     { maxZoom: 16 }).addTo(map);
 }
 
+// Kept in step with the severity tokens in dash.css — Leaflet paints on canvas,
+// so it cannot read the custom properties itself.
 const SEV_COLOUR = {
-  critical: "#d03b3b", serious: "#ec835a", warning: "#fab219",
-  normal: "#0ca30c", info: "#3987e5",
+  critical: "#c62828", serious: "#e05a10", warning: "#f0b429",
+  normal: "#2e7d32", info: "#1a56c4",
 };
 
 let lastFitKey = null;
@@ -384,6 +422,7 @@ function renderAll() {
     `${rows.length} of ${windowed.length} in window`;
 
   renderStatus(windowed);
+  renderSummary(windowed);
   renderList(rows);
   renderDetail();
   renderMap(rows);
@@ -401,6 +440,16 @@ function wire() {
     const b = e.target.closest("[data-sev]"); if (!b) return;
     const s = b.dataset.sev;
     state.filters.severities.has(s) ? state.filters.severities.delete(s) : state.filters.severities.add(s);
+    renderFilterChrome(); renderAll();
+  });
+
+  // A tile is a shortcut into the severity filter: click to see only that
+  // severity, click again to go back to the default set.
+  $("#summary").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tile-sev]"); if (!b) return;
+    const s = b.dataset.tileSev;
+    const only = state.filters.severities.size === 1 && state.filters.severities.has(s);
+    state.filters.severities = new Set(only ? DEFAULT_SEVERITIES : [s]);
     renderFilterChrome(); renderAll();
   });
 

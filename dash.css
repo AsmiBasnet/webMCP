@@ -1,228 +1,291 @@
 /* SankatSathi — live multi-source view.
  *
- * An instrument panel, not a document. Everything is one screen: filters top,
- * records left, detail and map right. Nothing scrolls the page except the two
- * inner panes, so the filter bar and the freshness line are always visible —
- * a number on this screen must never be readable without its age.
+ * Plain page: one system font, white ground, grey rules, and colour used only
+ * where it means something — the five severity levels and the source tags.
+ *
+ * Two rules are not negotiable: the freshness line is never hidden or
+ * collapsed, and no number appears without its age and its source.
  */
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  --ground: #0b0e11;
-  --panel: #12161a;
-  --panel-2: #171c21;
-  --panel-3: #1e242a;
-  --rule: rgba(232, 230, 225, 0.11);
-  --rule-strong: rgba(232, 230, 225, 0.2);
+  --bg: #ffffff;
+  --bg-2: #f6f6f6;
+  --rule: #dddddd;
+  --rule-strong: #bbbbbb;
 
-  --ink: #e8e6e1;
-  --ink-2: #a7acb2;
-  --ink-3: #737a81;
+  --ink: #111111;
+  --ink-2: #555555;
+  --ink-3: #888888;
 
-  --accent: #e4572e;
-  --water: #4fc3d9;
+  --link: #1a56c4;
 
-  --critical: #d03b3b;
-  --serious: #ec835a;
-  --warning: #fab219;
-  --normal: #0ca30c;
-  --info: #3987e5;
+  --critical: #c62828;
+  --serious: #e05a10;
+  --warning: #f0b429;   /* fill only; as text it is a swatch beside ink */
+  --normal: #2e7d32;
+  --info: #1a56c4;
+  --damage: #6a3fb5;
 
-  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --sans: "IBM Plex Sans Devanagari", "IBM Plex Sans", system-ui, sans-serif;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 
-  --radius: 3px;
+  --gutter: clamp(1rem, 3vw, 2rem);
+  --max: 1400px;
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+* { box-sizing: border-box; }
 
-html, body { height: 100%; }
 body {
   margin: 0;
-  background: var(--ground);
+  background: var(--bg);
   color: var(--ink);
-  font-family: var(--sans);
-  font-size: 14px;
+  font-family: var(--font);
+  font-size: 15px;
   line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
-a { color: var(--water); }
+a { color: var(--link); }
 .dim { color: var(--ink-3); }
-.mono { font-family: var(--mono); }
-.warn { color: var(--warning); }
+.warn { color: var(--ink); }
+/* Amber marks the level; the words stay in ink so they can actually be read. */
+.warn::before, .sev-text--warning::before {
+  content: "";
+  display: inline-block;
+  width: 0.65em;
+  height: 0.65em;
+  border-radius: 2px;
+  background: var(--warning);
+  margin-right: 0.4em;
+}
 .bad-text { color: var(--critical); }
 
-/* --- masthead ----------------------------------------------------------- */
+.wrap { width: 100%; max-width: var(--max); margin-inline: auto; padding-inline: var(--gutter); }
 
-header {
+/* --- header ------------------------------------------------------------- */
+
+header { border-bottom: 1px solid var(--rule); }
+header > .wrap {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem 1rem;
   flex-wrap: wrap;
-  padding: 0.6rem 1rem;
-  border-bottom: 1px solid var(--rule-strong);
-  background: var(--panel);
-  flex: none;
+  gap: 0.25rem 1rem;
+  padding-block: 0.75rem;
 }
-.wordmark {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-.wordmark span { color: var(--accent); font-weight: 500; }
-.sub { color: var(--ink-3); font-size: 0.78rem; flex: 1 1 12rem; }
-header a.link {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-decoration: none;
-  border: 1px solid var(--rule-strong);
-  padding: 0.25rem 0.55rem;
-  border-radius: var(--radius);
-}
-header a.link:hover { border-color: var(--water); }
+.wordmark { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.wordmark span { font-weight: 400; color: var(--ink-2); }
+.sub { margin: 0; flex: 1 1 14rem; color: var(--ink-2); font-size: 0.9rem; }
+header a.link { font-size: 0.85rem; }
 
 /* --- source status ------------------------------------------------------ */
 
+.statusbar { background: var(--bg-2); border-bottom: 1px solid var(--rule); }
 #status {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem 1rem;
-  padding: 0.45rem 1rem;
-  border-bottom: 1px solid var(--rule);
-  background: var(--panel-2);
-  font-family: var(--mono);
-  font-size: 0.72rem;
+  gap: 0.25rem 1.25rem;
+  padding-block: 0.5rem;
+  font-size: 0.8rem;
   color: var(--ink-2);
-  flex: none;
 }
 .src { display: inline-flex; align-items: center; gap: 0.4rem; cursor: default; }
-.src i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.src i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
 .src--ok i { background: var(--normal); }
 .src--bad i { background: var(--critical); }
 .src--off i { background: transparent; box-shadow: inset 0 0 0 1px var(--ink-3); }
 .src--off { color: var(--ink-3); }
-.src b { color: var(--ink); font-weight: 500; }
+.src b { color: var(--ink); font-weight: 600; }
 .status-when { margin-left: auto; color: var(--ink-3); }
 
-/* --- filter bar --------------------------------------------------------- */
+/* A source that fell back to the stored snapshot is neither healthy nor down.
+ * It gets its own state, because green over canned data is the one lie this
+ * status bar must never tell. */
+.src--stale i { background: var(--warning); }
+.src--stale b { color: var(--ink); }
 
+/* --- summary ------------------------------------------------------------ */
+
+#summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.25rem;
+  padding-block: 1rem 0.85rem;
+}
+.sum-total { font-size: 1.05rem; }
+.sum-total b { font-size: 1.5rem; font-weight: 600; }
+.sum-sub { color: var(--ink-3); font-size: 0.85rem; }
+
+/* Severity counts: a colour swatch carries the level and the number stays ink.
+ * A yellow legible enough to read as text would have to be mud. */
+.tile {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0 0 2px;
+  cursor: pointer;
+}
+.tile::before {
+  content: "";
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 2px;
+  background: var(--ink-3);
+}
+.tile b { font-size: 1.15rem; font-weight: 600; color: var(--ink); }
+.tile:hover { color: var(--ink); }
+.tile--critical::before { background: var(--critical); }
+.tile--serious::before  { background: var(--serious); }
+.tile--warning::before  { background: var(--warning); }
+.tile[aria-pressed="true"] { border-bottom-color: var(--ink-3); color: var(--ink); }
+
+/* --- filters ------------------------------------------------------------ */
+
+/* One toolbar. Every control is the same height, groups are separated by a
+ * hairline rather than by guesswork, and the two actions sit at the right end. */
 .filters {
+  --h: 28px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.9rem;
-  padding: 0.6rem 1rem;
-  border-bottom: 1px solid var(--rule-strong);
-  background: var(--panel);
-  flex: none;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-2);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  margin-bottom: 1rem;
 }
-.fgroup { display: flex; align-items: center; gap: 0.35rem; }
-.flabel {
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-right: 0.1rem;
+.fgroup {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding-right: 0.9rem;
+  border-right: 1px solid var(--rule);
+}
+.fgroup:last-of-type { padding-right: 0; border-right: 0; }
+.flabel { font-size: 0.8rem; color: var(--ink-2); white-space: nowrap; }
+
+/* Source and severity are segmented controls: one bar, shared edges. */
+#f-sources, #f-sev {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
 }
 
+/* Severity chips carry their colour when on, never as the only cue — the word
+ * is always there. */
 .chip {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  text-transform: lowercase;
-  color: var(--ink-3);
-  background: transparent;
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius);
-  padding: 0.22rem 0.55rem;
+  height: var(--h);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--ink-2);
+  background: var(--bg);
+  border: 0;
+  border-right: 1px solid var(--rule-strong);
+  border-radius: 0;
+  padding: 0 0.6rem;
   cursor: pointer;
 }
-.chip:hover { color: var(--ink); border-color: var(--ink-3); }
-.chip.on { color: var(--ink); border-color: var(--ink-2); background: var(--panel-3); }
-/* Severity chips carry their colour on the left edge, never as the only cue —
- * the word is always present. */
-.chip--critical.on { border-left: 3px solid var(--critical); }
-.chip--serious.on  { border-left: 3px solid var(--serious); }
-.chip--warning.on  { border-left: 3px solid var(--warning); }
-.chip--normal.on   { border-left: 3px solid var(--normal); }
-.chip--info.on     { border-left: 3px solid var(--info); }
+.chip:last-child { border-right: 0; }
+.chip:hover { color: var(--ink); background: var(--bg-2); }
+.chip.on { color: var(--bg); background: var(--ink-2); font-weight: 500; }
+.chip--critical.on { background: var(--critical); }
+.chip--serious.on  { background: var(--serious); }
+.chip--warning.on  { background: var(--warning); color: var(--ink); }
+.chip--normal.on   { background: var(--normal); }
+.chip--info.on     { background: var(--info); }
 
 select, input[type="search"] {
-  font-family: var(--sans);
-  font-size: 0.8rem;
+  height: var(--h);
+  font: inherit;
+  font-size: 0.88rem;
   color: var(--ink);
-  background: var(--panel-3);
+  background: var(--bg);
   border: 1px solid var(--rule-strong);
-  border-radius: var(--radius);
-  padding: 0.28rem 0.5rem;
-  max-width: 14rem;
+  border-radius: 4px;
+  padding: 0 0.45rem;
+  max-width: 13rem;
 }
-input[type="search"] { min-width: 11rem; }
-select:focus, input:focus { outline: 1px solid var(--water); outline-offset: 1px; }
+input[type="search"] { min-width: 13rem; }
+select:hover, input:hover, button.act:hover:not(:disabled) { border-color: var(--ink-3); }
+select:focus-visible, input:focus-visible, button:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+}
 
 button.act {
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-2);
-  background: var(--panel-3);
+  height: var(--h);
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: var(--bg);
   border: 1px solid var(--rule-strong);
-  border-radius: var(--radius);
-  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  padding: 0 0.7rem;
   cursor: pointer;
 }
-button.act:hover:not(:disabled) { color: var(--ink); border-color: var(--water); }
+button.act#refresh { color: var(--bg); background: var(--ink-2); border-color: var(--ink-2); }
+button.act#refresh:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); }
 button.act:disabled { opacity: 0.5; cursor: default; }
 .spacer { flex: 1; }
-#count { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-3); white-space: nowrap; }
+#count { font-size: 0.85rem; color: var(--ink-2); white-space: nowrap; }
 
 /* --- layout ------------------------------------------------------------- */
 
 main {
-  flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  min-height: 0;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 0 1.5rem;
+  align-items: start;
+  padding-bottom: 2.5rem;
 }
-.pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.pane--list { border-right: 1px solid var(--rule-strong); }
-#rows { overflow-y: auto; flex: 1; }
+.pane { min-width: 0; }
+.right { position: sticky; top: 1rem; display: grid; gap: 0.75rem; }
 
-.right { display: grid; grid-template-rows: minmax(12rem, 40%) 1fr; min-height: 0; }
-#map { min-height: 0; background: var(--panel); border-bottom: 1px solid var(--rule-strong); }
-#detail { overflow-y: auto; padding: 0.9rem 1rem 2rem; min-height: 0; }
+#map {
+  height: clamp(16rem, 34vh, 24rem);
+  background: var(--bg-2);
+  border: 1px solid var(--rule);
+}
+#detail {
+  border: 1px solid var(--rule);
+  padding: 0.9rem 1rem 1.1rem;
+  max-height: calc(100vh - clamp(16rem, 34vh, 24rem) - 4rem);
+  overflow-y: auto;
+}
 
 /* --- rows --------------------------------------------------------------- */
 
 .row {
   display: grid;
-  grid-template-columns: 3px minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  gap: 0 0.75rem;
   width: 100%;
   text-align: left;
-  background: transparent;
+  background: none;
   border: 0;
   border-bottom: 1px solid var(--rule);
-  padding: 0.6rem 1rem 0.65rem 0;
+  padding: 0.6rem 0.25rem 0.65rem 0;
   color: inherit;
   font: inherit;
   cursor: pointer;
 }
-.row:hover { background: var(--panel-2); }
-.row.sel { background: var(--panel-3); }
+.row:hover { background: var(--bg-2); }
+.row.sel { background: var(--bg-2); }
 
-.row-sev { display: block; align-self: stretch; }
+.row-sev { align-self: stretch; }
 .sev--critical { background: var(--critical); }
 .sev--serious  { background: var(--serious); }
 .sev--warning  { background: var(--warning); }
@@ -230,17 +293,19 @@ main {
 .sev--info     { background: var(--info); }
 
 .row-main { min-width: 0; }
-.row-title { display: block; font-weight: 500; }
-.row-ne { display: block; font-size: 0.85em; color: var(--ink-2); }
-.row-line { display: block; font-size: 0.85em; color: var(--ink-3); margin-top: 0.1rem; }
+.row-title { display: block; font-weight: 600; }
+.row-ne { display: block; font-size: 0.9em; color: var(--ink-2); }
+.row-line { display: block; font-size: 0.9em; color: var(--ink-2); }
 
 .row-meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.15rem;
-  font-family: var(--mono);
-  font-size: 0.68rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  align-self: start;
+  gap: 0.2rem 0.75rem;
+  max-width: 22rem;
+  font-size: 0.8rem;
   color: var(--ink-3);
   white-space: nowrap;
   min-width: 0;
@@ -248,160 +313,26 @@ main {
 /* A closure reason can be a whole sentence ("Huge flood from Tibet Region has
  * swept away entire river route road"). Unbroken, it sets the grid track's
  * minimum and pushes the page sideways, so it is capped and clipped here. */
-.row-kind {
-  max-width: 16rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.row-kind { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
 .row-age { color: var(--ink-2); }
 
-.tag {
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  padding: 0 0.3rem;
-}
+.tag { font-size: 0.8rem; color: var(--ink-2); }
 .tag--incident { color: var(--info); }
-.tag--river    { color: var(--water); }
+.tag--river    { color: var(--info); }
 .tag--road     { color: var(--serious); }
 .tag--alert    { color: var(--critical); }
 .tag--forecast { color: var(--normal); }
-.tag--damage   { color: #b07de0; }   /* satellite assessment — its own hue, outside the status ramp */
+.tag--damage   { color: var(--damage); }
 .tag--sev      { color: var(--ink-2); }
 
 .sev-text--critical { color: var(--critical); }
 .sev-text--serious  { color: var(--serious); }
-.sev-text--warning  { color: var(--warning); }
+.sev-text--warning  { color: var(--ink); }
 .sev-text--normal   { color: var(--normal); }
 .sev-text--info     { color: var(--info); }
 
-.empty, .detail-empty {
-  padding: 2rem 1rem;
-  color: var(--ink-3);
-  font-size: 0.9rem;
-  max-width: 48ch;
-}
-
-/* --- detail ------------------------------------------------------------- */
-
-.detail-head { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.6rem; }
-.close {
-  margin-left: auto;
-  background: transparent;
-  border: 1px solid var(--rule-strong);
-  border-radius: var(--radius);
-  color: var(--ink-2);
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0.1rem 0.4rem;
-  cursor: pointer;
-}
-.close:hover { color: var(--ink); border-color: var(--water); }
-
-#detail h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 0.2rem; line-height: 1.3; }
-.detail-ne { margin: 0 0 0.3rem; color: var(--ink-2); font-size: 0.9rem; }
-.detail-line { margin: 0 0 0.9rem; color: var(--ink-2); font-size: 0.9rem; }
-
-.dl {
-  display: grid;
-  grid-template-columns: minmax(8rem, 12rem) 1fr;
-  gap: 1px;
-  margin: 0 0 1rem;
-  background: var(--rule);
-  border: 1px solid var(--rule);
-}
-.dt, .dd { background: var(--panel); padding: 0.35rem 0.6rem; font-size: 0.82rem; }
-.dt { color: var(--ink-3); font-family: var(--mono); font-size: 0.72rem; }
-.dd { word-break: break-word; }
-
-.spark { margin: 0 0 1rem; }
-.spark svg { width: 100%; height: 56px; display: block; background: var(--panel); border: 1px solid var(--rule); }
-.spark figcaption { font-family: var(--mono); font-size: 0.68rem; color: var(--ink-3); margin-top: 0.3rem; }
-
-.prov {
-  font-size: 0.76rem;
-  color: var(--ink-3);
-  border-left: 2px solid var(--rule-strong);
-  padding: 0.35rem 0 0.35rem 0.7rem;
-  margin-bottom: 0.9rem;
-}
-.prov b { color: var(--ink-2); font-weight: 500; }
-
-.rawbox summary {
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-3);
-}
-.rawbox summary:hover { color: var(--ink-2); }
-.rawbox pre {
-  margin: 0.5rem 0 0;
-  padding: 0.7rem;
-  background: var(--panel-3);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  line-height: 1.45;
-  overflow-x: auto;
-  max-height: 22rem;
-}
-
-/* --- leaflet ------------------------------------------------------------ */
-
-.leaflet-container { background: var(--panel) !important; font-family: var(--sans); }
-.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--panel-3); color: var(--ink); border-radius: var(--radius); }
-.leaflet-popup-content { margin: 0.6rem 0.75rem; font-size: 0.8rem; }
-.leaflet-popup-content .meta { color: var(--ink-3); font-family: var(--mono); font-size: 0.7rem; }
-.leaflet-control-attribution { background: rgba(11,14,17,.82) !important; color: var(--ink-3) !important; font-size: 0.62rem !important; }
-.leaflet-control-attribution a { color: var(--ink-2) !important; }
-.leaflet-bar a { background: var(--panel-3) !important; color: var(--ink) !important; border-color: var(--rule-strong) !important; }
-
-/* --- narrow ------------------------------------------------------------- */
-
-@media (max-width: 940px) {
-  body { overflow: auto; }
-  main { grid-template-columns: 1fr; }
-  .pane--list { border-right: 0; border-bottom: 1px solid var(--rule-strong); }
-  #rows { max-height: none; overflow: visible; }
-  .right { grid-template-rows: 16rem auto; }
-  #map { height: 16rem; }
-  #detail { overflow: visible; }
-  .status-when { margin-left: 0; width: 100%; }
-}
-
-@media (max-width: 560px) {
-  .row { grid-template-columns: 3px minmax(0, 1fr); }
-  .row-meta {
-    flex-direction: row; flex-wrap: wrap; align-items: center;
-    gap: 0.4rem; grid-column: 2; white-space: normal;
-  }
-  .row-kind { max-width: 100%; }
-  .dl { grid-template-columns: 1fr; }
-  .dt { padding-bottom: 0; }
-}
-
-/* Without JavaScript this page has no content at all — it is a live view, not
- * a document. Say so rather than showing an empty shell. */
-html:not(.js) main, html:not(.js) .filters, html:not(.js) #status { display: none; }
-.nojs {
-  display: none;
-  padding: 2rem 1rem;
-  max-width: 60ch;
-  color: var(--ink-2);
-}
-html:not(.js) .nojs { display: block; }
-
-/* A source that fell back to the stored snapshot is neither healthy nor down.
- * It gets its own state, because green over canned data is the one lie this
- * status bar must never tell. */
-.src--stale i { background: var(--warning); }
-.src--stale b { color: var(--warning); }
+.empty, .detail-empty { padding: 1.5rem 0; color: var(--ink-2); max-width: 54ch; }
+.detail-empty { padding: 0; color: var(--ink-3); }
 
 /* Day headers. Sticky, because the list scrolls past them and "is this today
  * or last week?" is the question the whole default view exists to answer. */
@@ -413,15 +344,110 @@ html:not(.js) .nojs { display: block; }
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.35rem 1rem 0.35rem 0.6rem;
-  background: var(--panel-2);
+  padding: 0.4rem 0.25rem;
+  background: var(--bg);
   border-bottom: 1px solid var(--rule-strong);
-  border-top: 1px solid var(--rule-strong);
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--ink-2);
 }
 .group-head b { color: var(--ink-3); font-weight: 400; }
-#rows > .group-head:first-child { border-top: 0; }
+
+/* --- detail ------------------------------------------------------------- */
+
+.detail-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+.close {
+  margin-left: auto;
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+}
+.close:hover { color: var(--ink); }
+
+#detail h2 { font-size: 1.2rem; font-weight: 600; margin: 0 0 0.2rem; line-height: 1.3; }
+.detail-ne { margin: 0 0 0.3rem; color: var(--ink-2); font-size: 0.9rem; }
+.detail-line { margin: 0 0 0.9rem; color: var(--ink-2); font-size: 0.9rem; }
+
+.dl { display: grid; grid-template-columns: minmax(7rem, 10rem) 1fr; margin: 0 0 1rem; }
+.dt, .dd { padding: 0.3rem 0.5rem 0.3rem 0; border-bottom: 1px solid var(--rule); font-size: 0.88rem; }
+.dt { color: var(--ink-3); }
+.dd { word-break: break-word; }
+
+.spark { margin: 0 0 1rem; }
+.spark svg { width: 100%; height: 60px; display: block; background: var(--bg-2); border: 1px solid var(--rule); }
+.spark figcaption { font-size: 0.78rem; color: var(--ink-3); margin-top: 0.3rem; }
+
+.prov {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  border-left: 2px solid var(--rule);
+  padding: 0.25rem 0 0.25rem 0.7rem;
+  margin-bottom: 0.9rem;
+}
+.prov b { font-weight: 600; }
+
+.rawbox summary { cursor: pointer; font-size: 0.85rem; color: var(--ink-2); }
+.rawbox pre {
+  margin: 0.5rem 0 0;
+  padding: 0.7rem;
+  background: var(--bg-2);
+  border: 1px solid var(--rule);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-x: auto;
+  max-height: 22rem;
+}
+
+/* --- footer ------------------------------------------------------------- */
+
+footer {
+  border-top: 1px solid var(--rule);
+  padding-block: 1rem 2.5rem;
+  color: var(--ink-2);
+  font-size: 0.85rem;
+}
+footer p { margin: 0 0 0.4rem; max-width: 70ch; }
+
+/* --- leaflet ------------------------------------------------------------ */
+
+.leaflet-container { background: var(--bg-2); font-family: var(--font); }
+.leaflet-popup-content { margin: 0.6rem 0.75rem; font-size: 0.85rem; }
+.leaflet-popup-content .meta { color: var(--ink-3); font-size: 0.8rem; }
+.leaflet-control-attribution { font-size: 0.7rem; }
+
+/* --- narrow ------------------------------------------------------------- */
+
+@media (max-width: 1000px) {
+  main { grid-template-columns: 1fr; gap: 1.5rem; }
+  .right { position: static; }
+  #detail { max-height: none; }
+  .status-when { margin-left: 0; width: 100%; }
+}
+
+@media (max-width: 560px) {
+  .row { grid-template-columns: 4px minmax(0, 1fr); }
+  .row-meta {
+    justify-content: flex-start;
+    grid-column: 2;
+    white-space: normal;
+    margin-top: 0.25rem;
+  }
+  .row-kind { max-width: 100%; }
+  .dl { grid-template-columns: 1fr; }
+  .dt { border-bottom: 0; padding-bottom: 0; }
+}
+
+/* Without JavaScript this page has no content at all — it is a live view, not
+ * a document. Say so rather than showing an empty shell. */
+html:not(.js) main,
+html:not(.js) .filters,
+html:not(.js) .statusbar,
+html:not(.js) #summary { display: none; }
+.nojs { display: none; padding-block: 1.5rem 2.5rem; max-width: 62ch; color: var(--ink-2); }
+html:not(.js) .nojs { display: block; }
