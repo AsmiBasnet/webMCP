@@ -198,11 +198,13 @@ public/
     refdata.js        name → id, ward → municipality → district
     feed.js           six sources → one record type; severity, day buckets, filters
     dash.js           filter bar, list, drill-down, map, refresh loop
+    webmcp.js         eleven WebMCP tools over the same state — invisible to the interface
 scripts/
   build-refdata.mjs   admin hierarchy + hazard taxonomy → data/refdata.json
   build-snapshot.mjs  six captures, plus one per open EMS activation → data/snapshot/
   dash-test.mjs       six sources, day grouping, filters, drill-down, refresh, mid-session outage
   offline-test.mjs    every upstream dead before first byte — snapshot only
+  webmcp-test.mjs     calls every tool through document.modelContext; asserts the page moved
 worker.js             Cloudflare proxy — required for Copernicus, optional for the rest
 ```
 
@@ -226,6 +228,7 @@ npm run serve       # http-server on :8787
 ```bash
 npm run test:dash      # six sources, day grouping, filters, drill-down, refresh, mid-session outage
 npm run test:offline   # every upstream dead before the first byte — snapshot only
+npm run test:webmcp    # every tool called through document.modelContext, and the DOM checked after
 ```
 
 `test:dash` asserts the things that are easy to get quietly wrong: that all six sources contribute,
@@ -237,6 +240,63 @@ it did, and that an induced outage keeps the last good records on screen while s
 `test:offline` is the harder case: every upstream is dead *before the first byte*, so there is no last
 good reading to fall back on. All six sources must render from the snapshot, every one must be
 labelled stale, the filters must still work, and nothing on screen may claim to be live.
+
+---
+
+## The same page, addressed by an agent
+
+The interface is for a person with a mouse. Underneath it, the page registers **eleven
+[WebMCP](https://developer.chrome.com/docs/ai/webmcp) tools** on `document.modelContext`, so an
+agent can ask for the same things in a sentence. Nothing about this is visible in the interface —
+it appears only in DevTools and to whatever agent is reading the page.
+
+| Tool | | |
+|---|---|---|
+| `get_situation_summary` | read | counts by severity and source, worst districts, per-source freshness |
+| `list_records` | read | the rows on screen, worst first, with their ids |
+| `get_record_details` | read | every field one source published for one record, plus the raw payload |
+| `list_filter_options` | read | the district and hazard names the filter will actually accept |
+| `cross_reference_district` | read | **everything all six sources say about one district, side by side, with the divergences between them named** |
+| `get_source_health` | read | which sources are live, on snapshot, or unreachable — and how old |
+| `filter_records` | **write** | the whole filter bar in one call: sources, severities, window, district, type, search, sort |
+| `select_record` | **write** | opens a record's drill-down and pans the map to it |
+| `focus_map` | **write** | moves the map only — a district, coordinates, or all of Nepal |
+| `reset_view` | **write** | back to how the page opens |
+| `refresh_data` | **write** | refetch all six sources now |
+
+**The five write tools move the screen the person is looking at**, because they mutate the same
+`state.filters` a click mutates and then re-render. Ask for road closures and the Roads chip lights,
+the list collapses, the map refits, the counts follow. There is no agent-only code path and no
+agent-only data — which is the argument for WebMCP over DOM actuation: the page declares what it can
+do instead of the agent guessing which button to press, and the human watching sees the work happen.
+
+`cross_reference_district` is the one that earns the whole exercise. Nepal publishes all six of
+these feeds and none of them together, so the comparison is the product. Ask it about Rasuwa
+during the August 2026 GLOF flood and it returns, in one answer: Copernicus grading **864 of
+1,000 surveyed buildings** as affected across two settlements, the incident record holding **one
+record** for the same window, a highway closed since 26 August with **7,025 households behind
+it**, a gauge, a forecast — and an explicit note that satellite assessment does not depend on a
+district officer being able to file, and the filing chain is what breaks when the roads are cut.
+It states the divergence and refuses to resolve it; it cannot know which source is right, only
+that reading either alone would be a mistake.
+
+Every result carries the same footer the page does — no warnings issued, nothing dispatched — and a
+tool that fails says so in a sentence telling the agent not to read it as an absence of events. That
+is what `get_source_health` is for: when the subject is casualties, *nothing happened* and *the feed
+is down* must never come out looking the same.
+
+WebMCP is an origin trial from Chrome 149 and a flag (`chrome://flags/#enable-webmcp-testing`) before
+that, so on most browsers `document.modelContext` does not exist. Where it is missing the page
+installs a small shim of the same shape, marked `shim: true` and announced in the console, so the
+tools stay callable from DevTools and from Playwright. Where it exists, the shim never installs.
+
+```js
+await document.modelContext.getTools();                        // eleven tools
+await document.modelContext.executeTool('filter_records', '{"sources":["road"]}');
+```
+
+Ten prompts to try are in [`PROMPTS.md`](PROMPTS.md); the API, the security model and the design
+rules are in [`docs/06-webmcp.md`](docs/06-webmcp.md).
 
 ---
 

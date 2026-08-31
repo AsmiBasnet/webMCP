@@ -11,6 +11,7 @@
     "serve": "npx http-server public -p 8787 -c-1",
     "test:dash": "node scripts/dash-test.mjs",
     "test:offline": "node scripts/offline-test.mjs",
+    "test:webmcp": "node scripts/webmcp-test.mjs",
     "deploy": "npx wrangler pages deploy ./public --project-name sankatsathi",
     "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy"
   },

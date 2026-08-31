@@ -17,6 +17,7 @@ Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Dev
 | 03 | [Product Brief](03-product-brief.md) | Positioning, users, the Ask→See→Act loop, why WebMCP fits, the OSM flywheel, risks, MVP cut, and draft Devpost submission text. |
 | 04 | [Deployment & Architecture](04-deployment-and-architecture.md) | CORS and the proxy you need, mixed-content blocks, Leaflet + tile setup, every verified outbound link, demo-night resilience. |
 | 05 | [Credits & Licences](05-credits-and-licences.md) | Every source, its licence, and the exact attribution wording. Read before deploying. |
+| 06 | [WebMCP](06-webmcp.md) | What WebMCP is, the full imperative API, its security model, and the eleven tools this page registers over the live view. |
 
 ---
 
