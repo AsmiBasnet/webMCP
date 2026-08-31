@@ -17,6 +17,13 @@ const REFRESH_MS = 180_000;   // three minutes; DHM publishes every ten
 const TICK_MS = 15_000;
 
 const DEFAULT_SEVERITIES = SEVERITIES.filter((s) => s !== "normal");
+const DEFAULT_DAYS = 2;
+const DEFAULT_SORT = "recency";
+// The windows index.html offers. A value outside this set has no <option> to
+// select, so syncControls would blank the control while the list stayed
+// filtered — the exact disagreement syncControls exists to prevent.
+const WINDOWS = [1, 2, 7, 30, 90];
+const SORTS = ["recency", "severity", "time"];
 
 const state = {
   records: [],
@@ -29,7 +36,7 @@ const state = {
   filters: {
     // Opens on today and yesterday. Everything older is one dropdown away —
     // the window is the escape hatch, not the default.
-    days: 2,
+    days: DEFAULT_DAYS,
     sources: new Set(SOURCES.map((s) => s.id)),
     // Every severity except `normal`. 163 gauges report every ten minutes and
     // on a quiet day all but a handful sit below their warning level — 159 rows
@@ -39,11 +46,12 @@ const state = {
     district: "",
     kind: "",
     search: "",
-    sort: "recency",
+    sort: DEFAULT_SORT,
   },
 };
 
 let timer = null;
+let pending = null;          // the in-flight load, so concurrent callers queue
 let map = null;
 const markers = { layer: null };
 
@@ -51,8 +59,36 @@ const markers = { layer: null };
 // Fetch + refresh loop
 // ---------------------------------------------------------------------------
 
-async function refresh({ force = true } = {}) {
-  if (state.busy) return;
+/**
+ * Fetch all six sources.
+ *
+ * Serialised rather than dropped. The old guard returned early whenever a
+ * fetch was already in flight, which was fine for a poll tick and wrong for
+ * everything else: a caller that has just widened the window to 90 days must
+ * not be satisfied by the 2-day fetch that happened to be running, and must
+ * certainly not be told it was. Concurrent callers now queue and each gets its
+ * own load, which matters because agents issue tool calls in parallel.
+ *
+ * @param {{force?: boolean, tick?: boolean}} opts
+ * @returns {Promise<{fetched: boolean, reason?: string}>} whether a fetch
+ *          actually ran, so callers can report what happened rather than
+ *          assume it.
+ */
+function refresh(opts = {}) {
+  // A background tick has nothing to prove. If a load is already running, that
+  // load *is* this tick, and queueing a second one would just double the
+  // traffic to APIs that have no SLA.
+  if (opts.tick && pending) return Promise.resolve({ fetched: false, reason: "a refresh was already running" });
+
+  const run = () => load(opts);
+  pending = pending ? pending.then(run, run) : run();
+
+  const mine = pending;
+  mine.finally(() => { if (pending === mine) pending = null; });
+  return mine;
+}
+
+async function load({ force = true } = {}) {
   state.busy = true;
   setBusy(true);
 
@@ -72,13 +108,14 @@ async function refresh({ force = true } = {}) {
   setBusy(false);
   renderAll();
   schedule();
+  return { fetched: true };
 }
 
 function schedule() {
   clearTimeout(timer);
   if (document.hidden) return;
   const delay = state.failures ? Math.min(REFRESH_MS * 2 ** state.failures, 900_000) : REFRESH_MS;
-  timer = setTimeout(() => refresh(), delay);
+  timer = setTimeout(() => refresh({ tick: true }), delay);
 }
 
 function setBusy(busy) {
@@ -447,13 +484,26 @@ function syncControls() {
   }
 }
 
-/** The default view, shared by the Reset button and the reset_view tool. */
-function resetFilters() {
+/** The default view, shared by the Reset button and the reset_view tool.
+ *
+ *  Every default, including the two that used to be left behind: the window and
+ *  the sort. reset_view promises "back to how the page opens", and a reset that
+ *  quietly left a 90-day window in place would have every later reading answer
+ *  over 90 days while reporting itself as the default view. Restoring the
+ *  window means a fetch, so this is async and the tool awaits it. */
+async function resetFilters() {
   state.filters.sources = new Set(SOURCES.map((s) => s.id));
   state.filters.severities = new Set(DEFAULT_SEVERITIES);
   state.filters.district = ""; state.filters.kind = ""; state.filters.search = "";
+  state.filters.sort = DEFAULT_SORT;
   state.selected = null;
-  renderFilterChrome(); renderAll();
+
+  const refetch = state.filters.days !== DEFAULT_DAYS;
+  state.filters.days = DEFAULT_DAYS;
+
+  renderFilterChrome();
+  if (refetch) await refresh();
+  else renderAll();
 }
 
 function wire() {
@@ -505,7 +555,7 @@ function wire() {
 
   $("#refresh").addEventListener("click", () => refresh());
 
-  $("#reset").addEventListener("click", resetFilters);
+  $("#reset").addEventListener("click", () => resetFilters());
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && state.selected) { state.selected = null; renderAll(); }
@@ -513,7 +563,7 @@ function wire() {
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) clearTimeout(timer);
-    else if (!state.fetchedAt || Date.now() - state.fetchedAt > REFRESH_MS) refresh();
+    else if (!state.fetchedAt || Date.now() - state.fetchedAt > REFRESH_MS) refresh({ tick: true });
     else schedule();
   });
 }
@@ -530,46 +580,107 @@ function wire() {
 const controls = {
   state,
 
-  /** Apply any subset of the filter bar. Returns what actually changed. */
+  /**
+   * Apply any subset of the filter bar.
+   *
+   * Returns `{ changed, rejected }`. Nothing is applied silently and nothing is
+   * dropped silently: a value that is not on offer comes back in `rejected`
+   * with the reason, because the alternative is a view filtered to zero rows
+   * and an agent with no way to tell "that name matched nothing" from "nothing
+   * has happened there". On a page about casualties those must never look the
+   * same.
+   */
   async apply({ sources, severities, window: days, district, type, search, sort } = {}, signal) {
     const changed = [];
+    const rejected = [];
+
+    // What the loaded window actually offers. Checked against the records
+    // rather than a fixed list, because which districts exist depends on what
+    // was reported today.
+    const inWindow = applyFilters(state.records, { days: state.filters.days });
+    const known = (key) => new Set(inWindow.map((r) => r[key]).filter(Boolean));
 
     if (Array.isArray(sources) && sources.length) {
-      const valid = sources.filter((s) => SOURCES.some((x) => x.id === s));
+      const valid = sources.filter((x) => SOURCES.some((s) => s.id === x));
+      const bad = sources.filter((x) => !valid.includes(x));
+      if (bad.length) rejected.push(`sources ${bad.join(", ")} — not among ${SOURCES.map((s) => s.id).join(", ")}`);
       if (valid.length) { state.filters.sources = new Set(valid); changed.push(`sources=${valid.join("+")}`); }
     }
+
     if (Array.isArray(severities) && severities.length) {
-      const valid = severities.filter((s) => SEVERITIES.includes(s));
+      const valid = severities.filter((x) => SEVERITIES.includes(x));
+      const bad = severities.filter((x) => !valid.includes(x));
+      if (bad.length) rejected.push(`severities ${bad.join(", ")} — not among ${SEVERITIES.join(", ")}`);
       if (valid.length) { state.filters.severities = new Set(valid); changed.push(`severities=${valid.join("+")}`); }
     }
-    if (typeof district === "string") { state.filters.district = district; changed.push(`district=${district || "all"}`); }
-    if (typeof type === "string") { state.filters.kind = type; changed.push(`type=${type || "all"}`); }
+
+    if (typeof district === "string") {
+      if (!district || known("district").has(district)) {
+        state.filters.district = district;
+        changed.push(`district=${district || "all"}`);
+      } else {
+        rejected.push(
+          `district "${district}" — no records in the current ${state.filters.days}-day window carry that ` +
+          `name, so the filter was NOT applied and the view is unchanged. This is a name that matched ` +
+          `nothing, not a district where nothing happened. Call list_filter_options for the names on offer, ` +
+          `or widen the window.`
+        );
+      }
+    }
+
+    if (typeof type === "string") {
+      if (!type || known("kind").has(type)) {
+        state.filters.kind = type;
+        changed.push(`type=${type || "all"}`);
+      } else {
+        rejected.push(
+          `type "${type}" — no records in the current window carry that hazard type, so the filter was NOT ` +
+          `applied. Call list_filter_options for the types on offer.`
+        );
+      }
+    }
+
     if (typeof search === "string") { state.filters.search = search.trim(); changed.push(`search=${search.trim() || "cleared"}`); }
-    if (typeof sort === "string" && ["recency", "severity", "time"].includes(sort)) {
-      state.filters.sort = sort; changed.push(`sort=${sort}`);
+
+    if (typeof sort === "string") {
+      if (SORTS.includes(sort)) { state.filters.sort = sort; changed.push(`sort=${sort}`); }
+      else rejected.push(`sort "${sort}" — not among ${SORTS.join(", ")}`);
     }
 
     renderFilterChrome();
 
     // The window is the one filter that is also a fetch: widening it asks all
-    // six sources for more, so it is awaited and reported as such.
-    if (typeof days === "number" && days !== state.filters.days) {
+    // six sources for more. It is awaited, and reported by what actually
+    // happened rather than by what was asked for.
+    if (typeof days === "number" && !WINDOWS.includes(days)) {
+      rejected.push(
+        `window ${days} — the page offers ${WINDOWS.join(", ")} days. Applying anything else would leave the ` +
+        `Window control blank while the list stayed filtered, so it was NOT applied.`
+      );
+      renderAll();
+    } else if (typeof days === "number" && days !== state.filters.days) {
       state.filters.days = days;
-      changed.push(`window=${days}d (refetched)`);
-      await refresh();
+      const res = await refresh();
+      changed.push(res.fetched ? `window=${days}d (refetched)` : `window=${days}d (refetch skipped: ${res.reason})`);
     } else {
       renderAll();
     }
 
     if (signal?.aborted) throw new DOMException("Tool execution aborted", "AbortError");
-    return changed;
+    return { changed, rejected };
   },
 
-  refresh: () => refresh(),
+  refresh: (opts) => refresh(opts),
 
+  /** @returns {{selected: string|null, mapMoved: boolean}} */
   select(id) {
     state.selected = id;
+    const r = id ? state.records.find((x) => x.id === id) : null;
     renderAll();               // renderDetail pans the map when the record has a point
+    // Whether the map actually moved is the caller's to report. Plenty of BIPAD
+    // rows have no coordinates, and telling someone "I have put it on the map"
+    // when the map has not moved is the small lie this file is written against.
+    return { selected: state.selected, mapMoved: !!(r?.point && map) };
   },
 
   /** Move the map only. Nothing here touches the list. */
@@ -606,7 +717,7 @@ const controls = {
     return { summary: "Nothing to move to — pass a district, coordinates, a zoom, or whole:true.", center: null, zoom: null };
   },
 
-  reset: resetFilters,
+  reset: () => resetFilters(),
 };
 
 async function boot() {
@@ -618,6 +729,11 @@ async function boot() {
     await loadRefdata();
   } catch (err) {
     $("#rows").innerHTML = `<div class="empty">Reference data failed to load: ${esc(err.message)}. Run <span class="mono">node scripts/build-refdata.mjs</span>.</div>`;
+    // No tools are registered on this path, deliberately. Without reference
+    // data nothing resolves to a district and no records load, so every tool
+    // would answer "0 records" over a local failure — an agent finding no tool
+    // surface at all learns strictly more than one told the country is quiet.
+    console.error("[WebMCP] no tools registered: reference data failed to load.", err);
     return;
   }
 
@@ -627,7 +743,16 @@ async function boot() {
   // settles answers over real records rather than an empty list. Invisible in
   // the interface by design — the evidence is in the console and in
   // `document.modelContext.getTools()`.
-  installWebMCP(controls).then((r) => { window.SankatSathi.webmcp = r; });
+  installWebMCP(controls)
+    .then((r) => { window.SankatSathi.webmcp = r; })
+    // Registration can fail outside the per-tool guard — an extension or a
+    // polyfill may have already defined document.modelContext non-configurably.
+    // Unhandled, that leaves no tools and no explanation, which is the worst of
+    // the three outcomes.
+    .catch((err) => {
+      window.SankatSathi.webmcp = { registered: [], error: String(err?.message ?? err), native: false };
+      console.error("[WebMCP] tool registration failed; this page has no tool surface.", err);
+    });
 
   // Re-render the age every 15s against the currently visible rows.
   setInterval(() => renderStatus(applyFilters(state.records, { days: state.filters.days })), TICK_MS);

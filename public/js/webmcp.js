@@ -74,13 +74,19 @@ function specs(ctl) {
 
   const sourceHealth = () => {
     const failed = new Set(state.errors.map((e) => e.source));
+    // `records` counts what is in the window, matching bySource and the status
+    // bar; `loaded` is everything fetched. Reporting only the second would let
+    // one response say `alert: 1` and `records: 47` for the same source, since
+    // the snapshot fallback carries GDACS events back to 2015.
+    const inWindow = windowed();
     return SOURCES.map((s) => ({
       id: s.id,
       label: s.label,
       origin: s.origin,
       cadence: s.cadence,
       status: failed.has(s.id) ? "unreachable" : state.stale.has(s.id) ? "snapshot" : "live",
-      records: state.records.filter((r) => r.source === s.id).length,
+      records: inWindow.filter((r) => r.source === s.id).length,
+      loaded: state.records.filter((r) => r.source === s.id).length,
       shown: state.filters.sources.has(s.id),
     }));
   };
@@ -177,7 +183,7 @@ function specs(ctl) {
       inputSchema: {
         type: "object",
         properties: {
-          id: str('Record id from list_records, e.g. "incident:12345" or "damage:EMSR927-AOI01".'),
+          id: str('Record id from list_records, e.g. "incident:12345" or "damage:EMSR927:AOI01".'),
           includeRaw: bool("Include the untouched source payload. Default false — it can be large."),
         },
         required: ["id"],
@@ -414,13 +420,18 @@ function specs(ctl) {
         },
       },
       execute: async (args = {}, { signal } = {}) => {
-        const changed = await apply(args, signal);
+        const { changed, rejected } = await apply(args, signal);
         const rows = visible();
         return {
           summary:
             `Applied ${changed.join(", ") || "no change"}. The view now shows ${rows.length} of ` +
-            `${windowed().length} records in the window.`,
+            `${windowed().length} records in the window.` +
+            (rejected.length
+              ? ` ${rejected.length} argument(s) were NOT applied — see rejected below, and do not read the ` +
+                `resulting row count as a finding until you have.`
+              : ""),
           changed,
+          rejected,
           total: rows.length,
           top: rows.slice(0, 10).map(brief),
         };
@@ -442,10 +453,16 @@ function specs(ctl) {
         if (id && !state.records.find((x) => x.id === id)) {
           return { summary: `No record with id ${id}. Call list_records for current ids.`, error: true };
         }
-        select(id || null);
+        const { mapMoved } = select(id || null);
         return {
-          summary: id ? `Opened ${id} on the page; the map has moved to it.` : "Closed the detail panel.",
+          summary: !id
+            ? "Closed the detail panel."
+            : mapMoved
+              ? `Opened ${id} on the page; the map has moved to it.`
+              : `Opened ${id} on the page. The map did NOT move — this record has no coordinates, which is a ` +
+                `gap in what the source published. Do not tell the person you have shown it to them on the map.`,
           selected: state.selected,
+          mapMoved,
         };
       },
     },
@@ -478,8 +495,13 @@ function specs(ctl) {
       annotations: { readOnlyHint: false },
       inputSchema: { type: "object", properties: {} },
       execute: async () => {
-        reset();
-        return { summary: `View reset to defaults; ${visible().length} records showing.`, total: visible().length };
+        await reset();
+        return {
+          summary:
+            `View reset to defaults — all six sources, every severity except normal, a ${state.filters.days}-day ` +
+            `window, sorted ${state.filters.sort}, nothing selected; ${visible().length} records showing.`,
+          total: visible().length,
+        };
       },
     },
     {
@@ -491,13 +513,19 @@ function specs(ctl) {
       annotations: { readOnlyHint: false },
       inputSchema: { type: "object", properties: {} },
       execute: async () => {
-        await refresh();
+        const before = state.fetchedAt;
+        const res = await refresh();
         const sources = sourceHealth();
         const bad = sources.filter((x) => x.status !== "live");
+        const moved = state.fetchedAt !== before;
         return {
           summary:
-            `Refetched. ${visible().length} records showing` +
+            (res.fetched
+              ? moved ? "Refetched. " : "Refetch ran but the timestamp did not move. "
+              : `No refetch ran — ${res.reason}. The data on screen is unchanged. `) +
+            `${visible().length} records showing` +
             (bad.length ? `; ${bad.map((x) => `${x.id} ${x.status}`).join(", ")}.` : "; all six sources live."),
+          fetched: res.fetched,
           fetchedAt: state.fetchedAt ? new Date(state.fetchedAt).toISOString() : null,
           sources,
         };
@@ -624,14 +652,21 @@ export function installShim() {
       if (!tool?.name || typeof tool.execute !== "function") {
         throw new TypeError("registerTool requires a name and an execute function");
       }
-      tools.set(tool.name, { ...tool, origin: location.origin, window, title: document.title, exposedTo });
+      tools.set(tool.name, { ...tool, origin: location.origin, title: document.title, exposedTo });
       signal?.addEventListener("abort", () => { tools.delete(tool.name); changed(); }, { once: true });
       changed();
     },
 
     async getTools() {
       return [...tools.values()]
-        .map(({ execute, ...rest }) => rest)
+        .map(({ execute, ...rest }) => {
+          // Chrome puts the owning `window` on each descriptor. Keeping it
+          // enumerable would make JSON.stringify(await getTools()) throw on a
+          // circular structure — which is the first thing anyone tries at a
+          // console — so it is present but hidden from serialisation.
+          Object.defineProperty(rest, "window", { value: window, enumerable: false, configurable: true });
+          return rest;
+        })
         .sort((a, b) => a.name.localeCompare(b.name));
     },
 

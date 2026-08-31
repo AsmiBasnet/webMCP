@@ -154,10 +154,12 @@ Then it names the divergences:
 > roads are cut — so treat the low incident count as a reporting lag to verify, not as evidence
 > that the district is fine.
 
-It computes three kinds of divergence: satellite damage against a near-silent incident record; an
-area imaged but not yet graded (*mapped is not undamaged*); and a closure whose estimated reopening
-has passed with no reopening recorded — which surfaced Mechi Rajmarg, logged with a five-hour
-repair estimate and still not marked reopened 53 days later, with 99,910 households behind it.
+It computes four kinds of divergence: satellite damage against a near-silent incident record; an
+area imaged but not yet graded (*mapped is not undamaged*); a closure whose estimated reopening has
+passed with no reopening recorded — which surfaced Mechi Rajmarg, logged with a five-hour repair
+estimate and still not marked reopened 53 days later, with 99,910 households behind it; and damage
+being graded in a district that also has households behind a closure, since access and damage are
+reported by different agencies and both bear on whether relief arrives.
 
 Every one of those is stated as **a divergence to check, never as a conclusion**. The page cannot
 know which source is right. It can know that a responder reading one of them alone is missing
@@ -226,7 +228,7 @@ console who should not have to quote JSON to try something.
 
 ```bash
 npm run serve            # http://127.0.0.1:8787
-npm run test:webmcp      # 39 assertions: tools registered, and the page moves
+npm run test:webmcp      # 55 assertions: tools registered, the page moves, and nothing overstates what it did
 ```
 
 In the browser console on the live page:
