@@ -4,7 +4,7 @@
 // showing how old it is and which source it came from.
 
 import { loadRefdata } from "./refdata.js";
-import { loadFeed, applyFilters, facets, SOURCES, SEVERITIES } from "./feed.js";
+import { loadFeed, applyFilters, facets, groupByDay, SOURCES, SEVERITIES } from "./feed.js";
 import { health, snapshotMode } from "./api.js";
 
 const $ = (s) => document.querySelector(s);
@@ -15,6 +15,8 @@ const n = (v) => (typeof v === "number" ? v.toLocaleString() : v);
 const REFRESH_MS = 180_000;   // three minutes; DHM publishes every ten
 const TICK_MS = 15_000;
 
+const DEFAULT_SEVERITIES = SEVERITIES.filter((s) => s !== "normal");
+
 const state = {
   records: [],
   errors: [],
@@ -24,13 +26,19 @@ const state = {
   busy: false,
   selected: null,
   filters: {
-    days: 7,
+    // Opens on today and yesterday. Everything older is one dropdown away —
+    // the window is the escape hatch, not the default.
+    days: 2,
     sources: new Set(SOURCES.map((s) => s.id)),
-    severities: new Set(),
+    // Every severity except `normal`. 163 gauges report every ten minutes and
+    // on a quiet day all but a handful sit below their warning level — 159 rows
+    // of "nothing is happening" ahead of anything that is. They are one chip
+    // away, which is where "the rest" belongs.
+    severities: new Set(DEFAULT_SEVERITIES),
     district: "",
     kind: "",
     search: "",
-    sort: "severity",
+    sort: "recency",
   },
 };
 
@@ -81,7 +89,7 @@ function setBusy(busy) {
 // Status
 // ---------------------------------------------------------------------------
 
-function renderStatus() {
+function renderStatus(visible = null) {
   const el = $("#status");
   if (!state.fetchedAt) { el.textContent = "Loading…"; return; }
 
@@ -99,7 +107,11 @@ function renderStatus() {
     const broken = bad.has(s.id);
     const isStale = stale.has(s.id);
     const cls = off ? "off" : broken ? "bad" : isStale ? "stale" : "ok";
-    const count = state.records.filter((r) => r.source === s.id).length;
+    // Count what is on screen, not what was fetched. A source that returned 17
+    // records of which the window shows 1 is reported as 1 — otherwise the bar
+    // contradicts the list directly beneath it.
+    const pool = visible ?? state.records;
+    const count = pool.filter((r) => r.source === s.id).length;
     const note = broken ? "unreachable" : isStale ? "serving stored snapshot, not live" : "live";
     return `<span class="src src--${cls}" title="${esc(s.origin)} · updates ${esc(s.cadence)} · ${note}">` +
       `<i></i>${esc(s.label)} <b>${off ? "—" : broken ? "failed" : isStale ? `${count} stale` : count}</b></span>`;
@@ -163,16 +175,34 @@ function renderList(rows) {
 
   if (!rows.length) {
     el.innerHTML =
-      `<div class="empty">Nothing matches these filters. ` +
+      `<div class="empty">Nothing in the last ${state.filters.days === 1 ? "day" : `${state.filters.days} days`} ` +
+      `matches these filters. ` +
       (state.errors.length
         ? `Note that ${esc(state.errors.map((e) => e.source).join(", "))} could not be reached — this is a ` +
-          `data-source failure, not an absence of events.`
-        : `That is what the sources returned, which is not the same as nothing having happened.`) +
-      `</div>`;
+          `data-source failure, not an absence of events. `
+        : `That is what the sources returned, which is not the same as nothing having happened. `) +
+      `Widen the window to look further back.</div>`;
     return;
   }
 
-  el.innerHTML = rows.map((r) => `
+  // Grouped only under the default sort. Choosing "severity" or "most recent"
+  // means the reader has asked for one flat ordering, and day headers would cut
+  // straight across it.
+  if (state.filters.sort !== "recency") {
+    el.innerHTML = rows.map(rowHtml).join("");
+    return;
+  }
+
+  el.innerHTML = groupByDay(rows)
+    .map((g) =>
+      `<div class="group-head"><span>${esc(g.label)}</span><b>${g.rows.length}</b></div>` +
+      g.rows.map(rowHtml).join("")
+    )
+    .join("");
+}
+
+function rowHtml(r) {
+  return `
     <button type="button" class="row${state.selected === r.id ? " sel" : ""}" data-id="${esc(r.id)}">
       <span class="row-sev sev--${r.severity}" title="${esc(r.severityLabel)}"></span>
       <span class="row-main">
@@ -186,7 +216,7 @@ function renderList(rows) {
         <span class="row-where">${esc(r.district ?? r.municipality ?? "—")}</span>
         <span class="row-age" title="${esc(r.at ?? "no timestamp")}">${esc(ago(r.at))}</span>
       </span>
-    </button>`).join("");
+    </button>`;
 }
 
 const sourceLabel = (id) => SOURCES.find((s) => s.id === id)?.label ?? id;
@@ -341,10 +371,15 @@ function renderAll() {
 
   const rows = applyFilters(state.records, state.filters);
 
-  $("#count").textContent =
-    `${rows.length} of ${state.records.length} record${state.records.length === 1 ? "" : "s"}`;
+  // What each source contributed to this window, before the severity, district
+  // and search filters — otherwise the bar would report "Gauges 4" while 163
+  // stations are reporting perfectly well.
+  const windowed = applyFilters(state.records, { days: state.filters.days });
 
-  renderStatus();
+  $("#count").textContent =
+    `${rows.length} of ${windowed.length} in window`;
+
+  renderStatus(windowed);
   renderList(rows);
   renderDetail();
   renderMap(rows);
@@ -391,7 +426,7 @@ function wire() {
 
   $("#reset").addEventListener("click", () => {
     state.filters.sources = new Set(SOURCES.map((s) => s.id));
-    state.filters.severities = new Set();
+    state.filters.severities = new Set(DEFAULT_SEVERITIES);
     state.filters.district = ""; state.filters.kind = ""; state.filters.search = "";
     $("#f-search").value = "";
     renderFilterChrome(); renderAll();
@@ -421,7 +456,8 @@ async function boot() {
   }
 
   await refresh({ force: false });
-  setInterval(renderStatus, TICK_MS);
+  // Re-render the age every 15s against the currently visible rows.
+  setInterval(() => renderStatus(applyFilters(state.records, { days: state.filters.days })), TICK_MS);
 }
 
 boot();

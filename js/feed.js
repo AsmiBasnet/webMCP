@@ -29,6 +29,13 @@ export const severityRank = (s) => RANK[s] ?? 99;
 
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
+// Records carry `current: true` when they describe the present rather than a
+// moment in the past. The window filter lets those through whatever their start
+// date, because a road blocked since July is cutting people off right now and
+// hiding it from a "recent" view would be the most dangerous kind of tidy.
+
+const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+
 // ---------------------------------------------------------------------------
 // Normalisers — one per source, each returning the common record shape:
 //
@@ -66,6 +73,7 @@ function fromIncident(r) {
   return {
     id: `incident:${r.id}`,
     source: "incident",
+    current: false,           // a dated event, not a description of now
     kind: hazardName(r.hazard),
     title: r.title ?? "Incident",
     titleNe: r.titleNe ?? null,
@@ -106,7 +114,11 @@ function fromRiver(r) {
   const toWarning = warning != null ? Number((warning - level).toFixed(3)) : null;
   const toDanger = danger != null ? Number((danger - level).toFixed(3)) : null;
 
-  let severity = "info", severityLabel = "no thresholds set";
+  // A gauge with no thresholds published cannot be assessed, so it cannot be
+  // urgent — it sits in the bottom tier with the gauges that are simply fine.
+  // The label never says "fine", though: it says it cannot be assessed, so the
+  // absence of a threshold is not read as the presence of safety.
+  let severity = "normal", severityLabel = "no thresholds published — cannot be assessed";
   if (danger != null && level >= danger) { severity = "critical"; severityLabel = "above danger"; }
   else if (warning != null && level >= warning) { severity = "serious"; severityLabel = "above warning"; }
   else if (toWarning != null && toWarning <= APPROACHING_M) { severity = "warning"; severityLabel = "nearing warning"; }
@@ -117,6 +129,7 @@ function fromRiver(r) {
   return {
     id: `river:${r.station ?? r.title}`,
     source: "river",
+    current: true,            // the latest reading is by definition now
     kind: `${r.basin ?? "—"} basin`,
     title: r.title ?? "Gauge",
     titleNe: null,
@@ -166,6 +179,7 @@ function fromRoad(r) {
   return {
     id: `road:${r.id}`,
     source: "road",
+    current: true,            // already filtered to blockages still in force
     kind: r.closureReason ?? "roadblock",
     title: r.title ?? "Road",
     titleNe: null,
@@ -204,15 +218,21 @@ function fromAlert(f) {
   const level = String(p.alertlevel ?? "").toLowerCase();
   const severity = level === "red" ? "critical" : level === "orange" ? "serious" : "warning";
 
+  // GDACS closes an episode with a `todate`. An alert whose window has passed
+  // is history and filters like one; an open episode is current.
+  const ends = p.todate ? new Date(p.todate).getTime() : null;
+  const ongoing = ends == null || ends >= Date.now();
+
   return {
     id: `alert:${p.eventid}`,
     source: "alert",
+    current: ongoing,
     kind: p.eventtype === "FL" ? "flood" : p.eventtype === "EQ" ? "earthquake" : p.eventtype ?? "event",
     title: p.name ?? p.htmldescription ?? "GDACS event",
     titleNe: null,
     at: p.fromdate ?? null,
     severity,
-    severityLabel: `${p.alertlevel ?? "unknown"} alert`,
+    severityLabel: `${p.alertlevel ?? "unknown"} alert${ongoing ? "" : ", episode closed"}`,
     district: null,
     districtNe: null,
     municipality: p.country ?? null,
@@ -249,6 +269,7 @@ function fromForecast(json, place) {
   return {
     id: `forecast:${place.name}`,
     source: "forecast",
+    current: true,            // a forecast is about the days ahead
     kind: "river discharge",
     title: `Discharge forecast — ${place.name}`,
     titleNe: null,
@@ -408,6 +429,16 @@ export function applyFilters(records, f = {}) {
   let out = records;
 
   if (f.sources?.size) out = out.filter((r) => f.sources.has(r.source));
+
+  // The window filters by when something happened — but only for records that
+  // are over. Anything still in force stays, whatever its start date.
+  // Otherwise a snapshot fallback, which carries GDACS events back to 2015,
+  // fills a two-day view with eleven-year-old alerts, while a highway blocked
+  // since July silently vanishes from it.
+  if (f.days) {
+    const cutoff = startOfDay(Date.now()) - (f.days - 1) * 86_400_000;
+    out = out.filter((r) => r.current || (r.at && new Date(r.at).getTime() >= cutoff));
+  }
   if (f.severities?.size) out = out.filter((r) => f.severities.has(r.severity));
   if (f.district) out = out.filter((r) => r.district === f.district);
   if (f.kind) out = out.filter((r) => r.kind === f.kind);
@@ -424,7 +455,54 @@ export function applyFilters(records, f = {}) {
     severityRank(a.severity) - severityRank(b.severity) || (b.at ?? "").localeCompare(a.at ?? "");
   const byTime = (a, b) => (b.at ?? "").localeCompare(a.at ?? "");
 
-  return [...out].sort(f.sort === "time" ? byTime : bySeverity);
+  // Default: today first, then yesterday, then everything older — and within
+  // each day, worst first. Sorting by severity alone would float a fatal
+  // incident from nine days ago above a road that closed this morning, which
+  // is the wrong answer for a screen whose job is "what is happening now".
+  const byRecency = (a, b) =>
+    bucketRank(a.at) - bucketRank(b.at) || bySeverity(a, b);
+
+  return [...out].sort(
+    f.sort === "time" ? byTime : f.sort === "severity" ? bySeverity : byRecency
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Day buckets
+//
+// Computed against the reader's local midnight, not against a 24-hour rolling
+// window: "yesterday" has to mean the calendar day before this one, or a
+// record timestamped 23:00 last night would sit under "Today" all morning.
+// ---------------------------------------------------------------------------
+
+export const BUCKETS = [
+  { id: "today", label: "Today" },
+  { id: "yesterday", label: "Yesterday" },
+  { id: "earlier", label: "Earlier" },
+  { id: "undated", label: "No timestamp published" },
+];
+
+/** 'today' | 'yesterday' | 'earlier' | 'undated' */
+export function bucketOf(iso) {
+  if (!iso) return "undated";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "undated";
+  const today = startOfDay(Date.now());
+  if (t >= today) return "today";
+  if (t >= today - 86_400_000) return "yesterday";
+  return "earlier";
+}
+
+const BUCKET_ORDER = Object.fromEntries(BUCKETS.map((b, i) => [b.id, i]));
+const bucketRank = (iso) => BUCKET_ORDER[bucketOf(iso)] ?? 99;
+
+/** Split an already-sorted list into day groups, preserving order. */
+export function groupByDay(rows) {
+  const groups = new Map(BUCKETS.map((b) => [b.id, []]));
+  for (const r of rows) groups.get(bucketOf(r.at)).push(r);
+  return BUCKETS
+    .map((b) => ({ ...b, rows: groups.get(b.id) }))
+    .filter((g) => g.rows.length);
 }
 
 /** Distinct values for the dropdowns, counted over the current record set. */

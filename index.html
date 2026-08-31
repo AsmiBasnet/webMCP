@@ -37,13 +37,13 @@
   </div>
 
   <div class="fgroup">
-    <label class="flabel" for="f-days">Window</label>
+    <label class="flabel" for="f-days" title="Filters dated events — incidents and alerts. Gauge readings, forecasts and roadblocks still in force describe the present, so they are always shown.">Window</label>
     <select id="f-days">
-      <option value="1">24 hours</option>
-      <option value="3">3 days</option>
-      <option value="7" selected>7 days</option>
-      <option value="30">30 days</option>
-      <option value="90">90 days</option>
+      <option value="1">Today</option>
+      <option value="2" selected>Today + yesterday</option>
+      <option value="7">Last 7 days</option>
+      <option value="30">Last 30 days</option>
+      <option value="90">Last 90 days</option>
     </select>
   </div>
 
@@ -60,7 +60,8 @@
   <div class="fgroup">
     <label class="flabel" for="f-sort">Sort</label>
     <select id="f-sort">
-      <option value="severity" selected>Severity</option>
+      <option value="recency" selected>Today first</option>
+      <option value="severity">Severity</option>
       <option value="time">Most recent</option>
     </select>
   </div>

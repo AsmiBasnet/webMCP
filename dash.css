@@ -401,3 +401,26 @@ html:not(.js) .nojs { display: block; }
  * status bar must never tell. */
 .src--stale i { background: var(--warning); }
 .src--stale b { color: var(--warning); }
+
+/* Day headers. Sticky, because the list scrolls past them and "is this today
+ * or last week?" is the question the whole default view exists to answer. */
+.group-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 1rem 0.35rem 0.6rem;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--rule-strong);
+  border-top: 1px solid var(--rule-strong);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.group-head b { color: var(--ink-3); font-weight: 400; }
+#rows > .group-head:first-child { border-top: 0; }
