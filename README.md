@@ -1,11 +1,12 @@
 # SankatSathi · संकट साथी
 
-**Live disaster data for Nepal, from five sources, in one filterable view.**
+**Live disaster data for Nepal, from six sources, in one filterable view.**
 
 Nepal publishes a great deal of disaster data and almost none of it together. Incidents sit in one
 API, river gauges in another, road closures in a third, international alerts in a fourth, forecasts in
-a fifth — each with its own shape, its own cadence, and its own idea of what counts as serious. This
-puts all five on one screen, normalised into one record type you can filter, sort and open up.
+a fifth, satellite damage assessment in a sixth — each with its own shape, its own cadence, and its
+own idea of what counts as serious. This puts all six on one screen, normalised into one record type
+you can filter, sort and open up.
 
 Two pages, sharing one data layer:
 
@@ -22,7 +23,7 @@ Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Dev
 
 ---
 
-## The five sources
+## The six sources
 
 | Source | Origin | Endpoint | Publishes |
 |---|---|---|---|
@@ -31,19 +32,43 @@ Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Dev
 | Roads | Dept. of Roads via BIPAD | `/api/v1/highway/` | as divisions report |
 | Alerts | GDACS / EC JRC | `events/geteventlist/SEARCH` | per episode |
 | Forecast | GloFAS / Open-Meteo | `v1/flood` | daily, 3 river points |
+| Damage | Copernicus EMS Rapid Mapping | `dashboard-api/public-activations/` | per satellite pass |
 
 Forecast points are fixed, because GloFAS is queried per coordinate rather than per country: Rasuwa
 (Bhote Koshi), Nuwakot (Trishuli) and Chitwan (Narayani) — the corridor of the 2026 flood.
+
+**Copernicus EMS is the only source that counts buildings from orbit** rather than from a district
+officer's form — which matters precisely when the reporting chain is underwater. Activation EMSR927
+covers this flood across four areas of interest, and there is one record per area, because a single
+row for the whole activation would hide which valley is worst. As of the last capture: Timure,
+**431 of 441 buildings affected**; Syapru Besi, 433 of 559.
+
+It takes two calls, since the activation list carries no geometry and no statistics and each open
+activation's detail is fetched separately. It is also the one source that cannot be read from a
+browser at all.
 
 Each source is fetched in parallel, and **a source that fails does not fail the load**. An unreachable
 gauge network is no reason to hide the road closures; the failure is named in the status bar and the
 rest of the feed renders.
 
+### The one source that needs the proxy
+
+`worker.js` was written for caching and for upgrading http-only station photos, and this README used
+to say it was not needed for CORS. That was true of the first five sources. Verified 30 Aug 2026:
+`rapidmapping.emergency.copernicus.eu` returns **no `Access-Control-Allow-Origin` header at all**, so
+a browser fetch of it fails outright.
+
+The app treats that like any unreachable source. It falls back to the build-time snapshot — which
+works because `build-snapshot.mjs` runs in Node, where CORS does not apply — and the status bar
+reports `damage · serving stored snapshot — not live` rather than passing satellite figures off as
+current. Set `PROXY` in `config.js` to a deployed worker and the source goes live; leave it empty and
+the data is still there, correctly labelled as stored.
+
 ---
 
 ## The unified record
 
-`public/js/feed.js` is the only file that knows how the five sources differ. Each normaliser returns
+`public/js/feed.js` is the only file that knows how the six sources differ. Each normaliser returns
 the same shape:
 
 ```js
@@ -74,7 +99,21 @@ each record actually means:
 | **normal** | — | below warning, or no thresholds published | open | — | peak ≤+15% |
 | **info** | no casualties recorded | — | — | — | no signal |
 
-Two choices worth naming. **An incident ranks by harm, not by hazard type** — a snake bite that killed
+Damage has a scale of its own, since a building count is not a casualty count:
+
+| Tier | Damage |
+|---|---|
+| **critical** | ≥50% of surveyed buildings affected |
+| **serious** | ≥20% |
+| **warning** | >0% |
+| **normal** | none affected |
+| **info** | mapped, no statistics published yet |
+
+Damage ranks by the **share** of surveyed buildings affected rather than the count: a settlement where
+nine in ten are gone is not the same finding as one where three in a hundred are, and a raw count
+conflates both with size.
+
+Two more choices worth naming. **An incident ranks by harm, not by hazard type** — a snake bite that killed
 someone outranks a flood that hurt nobody, because the list is read by people deciding where to look
 next. **A gauge ranks by headroom in metres, never a ratio** — many stations report metres above sea
 level, so level/threshold reads 0.999 for a gauge sitting 1.8 m clear of its mark.
@@ -110,7 +149,7 @@ two-day view while the Mechi highway blocked since July silently vanished from i
 
 | Control | Behaviour |
 |---|---|
-| Source | Five toggles. Off-state shows as `—` in the status bar, not as zero. |
+| Source | Six toggles. Off-state shows as `—` in the status bar, not as zero. |
 | Severity | Five toggles, `normal` off by default. |
 | Window | Today · today + yesterday (default) · 7 · 30 · 90 days. Changing it **re-fetches**. |
 | District | Populated from the data with counts, 77 districts at full window. |
@@ -161,7 +200,7 @@ public/
   styles.css          its styles
   data/               refdata.json + snapshot/
   js/
-    feed.js           five sources → one record type; severity, buckets, filters
+    feed.js           six sources → one record type; severity, buckets, filters
     dash.js           filter bar, list, drill-down, map, refresh loop
     api.js            fetch, memo, snapshot fallback, provenance, coordinate guard
     refdata.js        name → id, ward → municipality → district
@@ -174,7 +213,7 @@ public/
     map.js            Leaflet layers for the explorer
 scripts/
   build-refdata.mjs   admin hierarchy + hazard taxonomy → data/refdata.json
-  build-snapshot.mjs  six captures → data/snapshot/
+  build-snapshot.mjs  seven captures, plus one per open EMS activation → data/snapshot/
   dash-test.mjs       the live view
   smoke.mjs           every tool against the live APIs
   e2e.mjs             browser: WebMCP registration, agent calls, rendering, overflow
@@ -206,17 +245,17 @@ ask box runs the identical tools locally.
 ### Verify it
 
 ```bash
-npm run test:dash      # five sources, day grouping, filters, drill-down, refresh, degradation
+npm run test:dash      # six sources, day grouping, filters, drill-down, refresh, degradation
 npm run test:tools     # every tool against the live APIs
 npm run test:e2e       # real browser: WebMCP registration, agent calls, rendering, overflow
 npm run test:offline   # every upstream API blocked — snapshot fallback
 ```
 
-`test:dash` asserts the things that are easy to get quietly wrong: that all five sources contribute,
+`test:dash` asserts the things that are easy to get quietly wrong: that all six sources contribute,
 that the default window is today + yesterday with `Today` first, that `normal` is off and toggling it
 reveals the rest, that widening the window re-fetches rather than re-filters, that drill-down shows
-provenance and raw payload, and that an induced outage keeps the last good records on screen while
-saying so.
+provenance and raw payload, that Copernicus still yields records from its snapshot and discloses that
+it did, and that an induced outage keeps the last good records on screen while saying so.
 
 [`PROMPTS.md`](PROMPTS.md) lists sixty prompts for the explorer, grouped by tool, each run against the
 live router before being written down.
@@ -234,6 +273,7 @@ APIs corrected several of their assumptions, and the data turned up more.
 | `resourceType` filter is broken server-side; pull all and bucket | `resourceType` is indeed ignored — but **`resource_type` (snake_case) works**, as does `district`. Which matters: the register holds **58,650** facilities. |
 | CARTO basemaps, no key needed | CARTO's keyless endpoint now stamps **"API KEY REQUIRED"** across every tile. Switched to Esri Canvas, still keyless. |
 | `tasks.hotosm.org/api/v2/*` returned empty — test from a browser | Returns **403** to browsers. Project deep links work, so the campaign list is curated. |
+| `worker.js` is not needed for CORS | True of five sources. Copernicus EMS sends **no CORS header at all**, so it cannot be read from a browser without the proxy. |
 
 From the data rather than the docs:
 
@@ -298,7 +338,12 @@ Static hosting is enough — there is no server. Cloudflare Pages, Netlify and V
 Data from Nepal government sources that publish **no stated licence** — BIPAD/NDRRMA, DHM, and the
 Department of Roads — is displayed with attribution for informational purposes and is not
 redistributed. See [`docs/05-credits-and-licences.md`](docs/05-credits-and-licences.md). Basemaps ©
-Esri. GDACS © European Commission JRC. Forecasts from Open-Meteo / Copernicus EMS GloFAS.
+Esri. GDACS © European Commission JRC.
+
+Copernicus data is used under the Copernicus data and information policy — free, full and open access,
+with attribution required. **Contains Copernicus Emergency Management Service information 2026**:
+GloFAS forecasts via Open-Meteo, and Rapid Mapping activation EMSR927. Of every source here, it is the
+only one that states a licence at all.
 
 SankatSathi is an independent project. It is not affiliated with, endorsed by, or operated by NDRRMA,
 DHM, DoR or the Government of Nepal, and it is not an official warning service.

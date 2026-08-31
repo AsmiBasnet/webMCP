@@ -3,9 +3,13 @@
 //   npx wrangler deploy worker.js --name sankatsathi-proxy
 //   then set PROXY in public/js/config.js to https://<name>.<you>.workers.dev/?url=
 //
-// NOT required for CORS: BIPAD, GDACS and Open-Meteo were all verified on
-// 30 Aug 2026 to return `Access-Control-Allow-Origin: *`, so the site calls them
-// directly. This exists for the two things CORS does not solve:
+// REQUIRED for one source, optional for the rest. BIPAD, GDACS and Open-Meteo
+// were all verified on 30 Aug 2026 to return `Access-Control-Allow-Origin: *`,
+// so the site calls them directly. Copernicus EMS Rapid Mapping returns no such
+// header at all, so a browser cannot read it without this proxy — without one
+// deployed the app falls back to its build-time snapshot and says so.
+//
+// Beyond that one source, this exists for the two things CORS does not solve:
 //
 //   1. Caching. BIPAD has no SLA and no rate limit published. A 120-second edge
 //      cache means a demo audience hitting refresh doesn't hammer a government
@@ -17,6 +21,7 @@ const ALLOWED = new Set([
   "bipadportal.gov.np",
   "www.gdacs.org",
   "flood-api.open-meteo.com",
+  "rapidmapping.emergency.copernicus.eu",   // sends no CORS header at all
   "overpass-api.de",
   "nominatim.openstreetmap.org",
   "daq.hydrology.gov.np",     // http-only station photos

@@ -9,6 +9,17 @@ export const BIPAD = "https://bipadportal.gov.np/api/v1";
 export const GDACS = "https://www.gdacs.org/gdacsapi/api";
 export const OPENMETEO = "https://flood-api.open-meteo.com/v1/flood";
 
+// Copernicus EMS Rapid Mapping. Satellite damage assessment per area of
+// interest — the only source here that counts buildings from orbit rather than
+// from a district officer's form.
+//
+// This is the ONE source that genuinely needs the proxy: verified 30 Aug 2026,
+// it returns no Access-Control-Allow-Origin at all, so a browser fetch fails
+// outright. Without a PROXY configured the app falls back to the build-time
+// snapshot and says so, which is why worker.js is no longer purely optional.
+export const COPERNICUS =
+  "https://rapidmapping.emergency.copernicus.eu/backend/dashboard-api";
+
 // Set to a deployed Worker (see worker.js) to route JSON through a cache.
 // Empty string = call the upstream APIs directly.
 export const PROXY = "";

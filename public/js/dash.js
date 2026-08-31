@@ -163,6 +163,10 @@ const ago = (iso) => {
   if (!iso) return "—";
   const ms = Date.now() - new Date(iso);
   if (Number.isNaN(ms)) return "—";
+  // Satellite acquisition times occasionally sit slightly ahead of local time.
+  // Rendering that as "-73m" reads like a bug in the page rather than a quirk
+  // of the source, so anything in the future is simply "now".
+  if (ms < 0) return "now";
   const m = Math.round(ms / 60_000);
   if (m < 60) return `${m}m`;
   const h = Math.round(m / 60);

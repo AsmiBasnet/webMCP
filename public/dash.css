@@ -269,6 +269,7 @@ main {
 .tag--road     { color: var(--serious); }
 .tag--alert    { color: var(--critical); }
 .tag--forecast { color: var(--normal); }
+.tag--damage   { color: #b07de0; }   /* satellite assessment — its own hue, outside the status ramp */
 .tag--sev      { color: var(--ink-2); }
 
 .sev-text--critical { color: var(--critical); }
