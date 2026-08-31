@@ -6,6 +6,7 @@
 import { loadRefdata } from "./refdata.js";
 import { loadFeed, applyFilters, facets, groupByDay, SOURCES, SEVERITIES } from "./feed.js";
 import { health, snapshotMode } from "./api.js";
+import { installWebMCP } from "./webmcp.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) =>
@@ -426,6 +427,33 @@ function renderAll() {
   renderList(rows);
   renderDetail();
   renderMap(rows);
+  syncControls();
+}
+
+/** Push state back into the three controls that hold their own value.
+ *
+ *  The chips and the two dropdowns are re-rendered from state on every pass,
+ *  but the window, sort and search inputs are plain DOM that keeps whatever it
+ *  was last given. A person changing them is already in sync; a WebMCP tool
+ *  changing `state.filters` is not, and a filter bar that disagrees with the
+ *  list beneath it is worse than no filter bar. */
+function syncControls() {
+  const days = $("#f-days"), sort = $("#f-sort"), search = $("#f-search");
+  if (days && days.value !== String(state.filters.days)) days.value = String(state.filters.days);
+  if (sort && sort.value !== state.filters.sort) sort.value = state.filters.sort;
+  // Never fight the person's cursor: leave the box alone while it has focus.
+  if (search && document.activeElement !== search && search.value !== state.filters.search) {
+    search.value = state.filters.search;
+  }
+}
+
+/** The default view, shared by the Reset button and the reset_view tool. */
+function resetFilters() {
+  state.filters.sources = new Set(SOURCES.map((s) => s.id));
+  state.filters.severities = new Set(DEFAULT_SEVERITIES);
+  state.filters.district = ""; state.filters.kind = ""; state.filters.search = "";
+  state.selected = null;
+  renderFilterChrome(); renderAll();
 }
 
 function wire() {
@@ -477,13 +505,7 @@ function wire() {
 
   $("#refresh").addEventListener("click", () => refresh());
 
-  $("#reset").addEventListener("click", () => {
-    state.filters.sources = new Set(SOURCES.map((s) => s.id));
-    state.filters.severities = new Set(DEFAULT_SEVERITIES);
-    state.filters.district = ""; state.filters.kind = ""; state.filters.search = "";
-    $("#f-search").value = "";
-    renderFilterChrome(); renderAll();
-  });
+  $("#reset").addEventListener("click", resetFilters);
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && state.selected) { state.selected = null; renderAll(); }
@@ -495,6 +517,97 @@ function wire() {
     else schedule();
   });
 }
+
+// ---------------------------------------------------------------------------
+// The control surface WebMCP tools drive
+//
+// Deliberately the same handful of operations the filter bar performs, and
+// nothing more. Tools mutate `state.filters` and re-render exactly as a click
+// does, so there is one code path to the screen rather than two, and an agent
+// cannot reach anything a person could not have reached by hand.
+// ---------------------------------------------------------------------------
+
+const controls = {
+  state,
+
+  /** Apply any subset of the filter bar. Returns what actually changed. */
+  async apply({ sources, severities, window: days, district, type, search, sort } = {}, signal) {
+    const changed = [];
+
+    if (Array.isArray(sources) && sources.length) {
+      const valid = sources.filter((s) => SOURCES.some((x) => x.id === s));
+      if (valid.length) { state.filters.sources = new Set(valid); changed.push(`sources=${valid.join("+")}`); }
+    }
+    if (Array.isArray(severities) && severities.length) {
+      const valid = severities.filter((s) => SEVERITIES.includes(s));
+      if (valid.length) { state.filters.severities = new Set(valid); changed.push(`severities=${valid.join("+")}`); }
+    }
+    if (typeof district === "string") { state.filters.district = district; changed.push(`district=${district || "all"}`); }
+    if (typeof type === "string") { state.filters.kind = type; changed.push(`type=${type || "all"}`); }
+    if (typeof search === "string") { state.filters.search = search.trim(); changed.push(`search=${search.trim() || "cleared"}`); }
+    if (typeof sort === "string" && ["recency", "severity", "time"].includes(sort)) {
+      state.filters.sort = sort; changed.push(`sort=${sort}`);
+    }
+
+    renderFilterChrome();
+
+    // The window is the one filter that is also a fetch: widening it asks all
+    // six sources for more, so it is awaited and reported as such.
+    if (typeof days === "number" && days !== state.filters.days) {
+      state.filters.days = days;
+      changed.push(`window=${days}d (refetched)`);
+      await refresh();
+    } else {
+      renderAll();
+    }
+
+    if (signal?.aborted) throw new DOMException("Tool execution aborted", "AbortError");
+    return changed;
+  },
+
+  refresh: () => refresh(),
+
+  select(id) {
+    state.selected = id;
+    renderAll();               // renderDetail pans the map when the record has a point
+  },
+
+  /** Move the map only. Nothing here touches the list. */
+  focus({ district, lat, lon, zoom, whole } = {}) {
+    if (!map) return { summary: "No map on this page.", center: null, zoom: null };
+
+    if (whole) {
+      map.setView([28.2, 84.5], 7);
+      return { summary: "Zoomed out to the whole of Nepal.", center: [28.2, 84.5], zoom: 7 };
+    }
+    if (typeof lat === "number" && typeof lon === "number") {
+      const z = zoom ?? 11;
+      map.setView([lat, lon], z);
+      return { summary: `Map centred on ${lat.toFixed(4)}, ${lon.toFixed(4)} at zoom ${z}.`, center: [lat, lon], zoom: z };
+    }
+    if (district) {
+      const pts = state.records.filter((r) => r.district === district && r.point).map((r) => r.point);
+      if (!pts.length) {
+        return {
+          summary: `Nothing with coordinates in ${district} is loaded, so the map has not moved. ` +
+                   `That is a gap in what the sources published, not necessarily an absence of events.`,
+          center: null, zoom: null,
+        };
+      }
+      map.fitBounds(L.latLngBounds(pts), { padding: [24, 24], maxZoom: zoom ?? 11 });
+      const c = map.getCenter();
+      return { summary: `Map fitted to ${pts.length} located record(s) in ${district}.`, center: [c.lat, c.lng], zoom: map.getZoom() };
+    }
+    if (typeof zoom === "number") {
+      map.setZoom(zoom);
+      const c = map.getCenter();
+      return { summary: `Zoom set to ${zoom}.`, center: [c.lat, c.lng], zoom };
+    }
+    return { summary: "Nothing to move to — pass a district, coordinates, a zoom, or whole:true.", center: null, zoom: null };
+  },
+
+  reset: resetFilters,
+};
 
 async function boot() {
   renderFilterChrome();
@@ -509,6 +622,13 @@ async function boot() {
   }
 
   await refresh({ force: false });
+
+  // Registered after the first load, so a tool called the instant the page
+  // settles answers over real records rather than an empty list. Invisible in
+  // the interface by design — the evidence is in the console and in
+  // `document.modelContext.getTools()`.
+  installWebMCP(controls).then((r) => { window.SankatSathi.webmcp = r; });
+
   // Re-render the age every 15s against the currently visible rows.
   setInterval(() => renderStatus(applyFilters(state.records, { days: state.filters.days })), TICK_MS);
 }
@@ -516,4 +636,4 @@ async function boot() {
 boot();
 
 // For the console and for tests.
-window.SankatSathi = { state, refresh, loadFeed, applyFilters };
+window.SankatSathi = { state, refresh, loadFeed, applyFilters, controls };
