@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SankatSathi - WebMCP Nepal Flood Command Center</title>
+    <title>Nepal Disaster Watch - WebMCP Nepal Flood Command Center</title>
     <!-- Google Fonts for premium typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,12 +18,18 @@
         <div class="header-logo">
             <span class="logo-icon"><i class="fa-solid fa-house-flood-water"></i></span>
             <div class="logo-text">
-                <h1>SANKATSATHI <span class="nepali-text">संकट साथी</span></h1>
+                <h1>NEPAL DISASTER WATCH <span class="nepali-text">नेपाल विपद् वाच</span></h1>
                 <p>WebMCP Flood Response & Resource Command Center</p>
             </div>
         </div>
         
         <div class="header-status">
+            <a class="btn-live-nav" href="/public/" title="Open Live Multi-Source Dashboard">
+                <i class="fa-solid fa-tower-broadcast"></i> Live Feed Dashboard
+            </a>
+            <a class="btn-donate-nav" href="https://pmdrf.nchl.com.np/" target="_blank" rel="noopener noreferrer" title="Prime Minister Disaster Relief Fund (PMDRF)">
+                <i class="fa-solid fa-hand-holding-heart"></i> Donate to Nepal Relief
+            </a>
             <div class="status-indicator">
                 <span class="pulse-dot red"></span>
                 <span class="status-label">SIMULATION RUNNING</span>
@@ -48,7 +54,7 @@
             <button class="btn-close" id="btn-close-settings">&times;</button>
         </div>
         <div class="drawer-body">
-            <p>SankatSathi runs WebMCP native tools. To test with a live client-side Gemini Agent, enter your Gemini API Key. If left empty, the dashboard runs in <strong>Local Simulation Mode</strong>.</p>
+            <p>Nepal Disaster Watch runs WebMCP native tools. To test with a live client-side Gemini Agent, enter your Gemini API Key. If left empty, the dashboard runs in <strong>Local Simulation Mode</strong>.</p>
             <div class="form-group">
                 <label for="gemini-key">Gemini API Key:</label>
                 <div class="input-wrapper">
@@ -247,7 +253,7 @@
                 <button class="btn btn-mini" id="btn-clear-telemetry"><i class="fa-solid fa-trash"></i> Clear</button>
             </div>
             <div class="panel-body telemetry-console font-mono scrollable flex-grow" id="telemetry-log">
-                <div class="tel-row system-msg">[System] SankatSathi initialized. WebMCP registers client-side tools automatically.</div>
+                <div class="tel-row system-msg">[System] Nepal Disaster Watch initialized. WebMCP registers client-side tools automatically.</div>
                 <div class="tel-row system-msg">[System] WebMCP hooks mounted on `document.modelContext`. Waiting for AI instructions...</div>
             </div>
         </div>
@@ -332,7 +338,7 @@
             </div>
             <div class="ai-chat-messages scrollable" id="ai-chat-messages">
                 <div class="chat-msg ai">
-                    <div class="msg-sender">SankatSathi Agent</div>
+                    <div class="msg-sender">Nepal Disaster Watch Agent</div>
                     <div class="msg-text">
                         Namaste! I am the local command co-pilot. I have full programmatic control of this dashboard through its WebMCP tools. 
                         <br><br>
