@@ -341,7 +341,7 @@ function damageTotals(stats) {
   return { rows: out, buildingsTotal: total, buildingsAffected: affected };
 }
 
-export function fromDamage(activation, aoi) {
+function fromDamage(activation, aoi) {
   // An AOI can carry several products — an initial grading and later monitoring
   // passes. The newest image is the one that describes the ground now.
   const products = aoi.products ?? [];

@@ -118,24 +118,11 @@ export async function bipad(path, params = {}, { pages = 1, snapshotKey, force =
   return out;
 }
 
-/** A caveat to attach when a result was computed over an incomplete fetch. */
-export function partialCaveat(...rowsets) {
-  return rowsets.some((r) => r?.partial)
-    ? "The data source became unreachable partway through this query, so these totals are computed over " +
-      "an incomplete fetch and are floors, not final figures. Re-run when the source is back."
-    : null;
-}
-
 export async function gdacsEvents({ from, to, types = "FL,EQ,TC,DR", country = "Nepal" }) {
   const url = `${GDACS}/events/geteventlist/SEARCH?${qs({
     eventlist: types, country, fromDate: from, toDate: to,
   })}`;
   return getJSON(url, { snapshotKey: "gdacs" });
-}
-
-export async function gdacsGeometry(eventId, episodeId = 1) {
-  const url = `${GDACS}/polygons/getgeometry?eventtype=FL&eventid=${eventId}&episodeid=${episodeId}`;
-  return getJSON(url);
 }
 
 export async function floodForecast(lat, lon, days = 14) {
