@@ -24,18 +24,51 @@ const perSource = await p.evaluate(() =>
 console.log("per source:", perSource);
 console.log("all five present:", Object.values(perSource).every((v) => v > 0));
 
+// --- recency defaults -----------------------------------------------------
+console.log("");
+console.log("-- recency --");
+console.log("default window:", await p.$eval("#f-days", (e) => e.value), "(expect 2)");
+console.log("default sort:", await p.$eval("#f-sort", (e) => e.value), "(expect recency)");
+const groups = await p.$$eval(".group-head span", (e) => e.map((x) => x.textContent.trim()));
+console.log("day groups:", groups);
+console.log("today is first:", groups[0] === "Today");
+
+// Quiet gauges are off by default and one chip away.
+const quietOff = await p.$eval('[data-sev="normal"]', (e) => !e.classList.contains("on"));
+console.log("normal severity off by default:", quietOff);
+const lean = await rows();
+await p.click('[data-sev="normal"]');
+await p.waitForTimeout(250);
+const withQuiet = await rows();
+console.log("toggling normal reveals the rest:", withQuiet > lean, `${lean} → ${withQuiet}`);
+await p.click('[data-sev="normal"]');
+
+// Widening the window has to fetch, not just re-filter.
+await p.selectOption("#f-days", "30");
+await p.waitForTimeout(9000);
+const wide = await rows();
+console.log("widening window adds records:", wide > lean, `${lean} → ${wide}`);
+console.log("earlier group appears:",
+  (await p.$$eval(".group-head span", (e) => e.map((x) => x.textContent.trim()))).includes("Earlier"));
+await p.selectOption("#f-days", "2");
+await p.waitForTimeout(9000);
+
 // --- filters --------------------------------------------------------------
-const all = await rows();
+const all = await rows();  // baseline: default window and severities
 await p.click('[data-src="incident"]');           // switch incidents off
 const без = await rows();
 console.log("source filter narrows:", без < all, `${all} → ${без}`);
 await p.click('[data-src="incident"]');
 
-await p.click('[data-sev="critical"]');
+// Severities are a set with `normal` already off, so isolating one means
+// switching the others off rather than switching it on.
+for (const sev of ["serious", "warning", "info"]) await p.click(`[data-sev="${sev}"]`);
+await p.waitForTimeout(250);
 const crit = await rows();
 const allCritical = await p.$$eval("#rows .row .row-sev", (e) => e.every((x) => x.classList.contains("sev--critical")));
 console.log("severity filter:", crit, "rows, all critical:", allCritical);
-await p.click('[data-sev="critical"]');
+await p.click("#reset");
+await p.waitForTimeout(250);
 
 await p.fill("#f-search", "landslide");
 await p.waitForTimeout(400);

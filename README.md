@@ -43,6 +43,26 @@ sitting 1.8 m clear. A road ranks by status and how many households are behind i
 
 ---
 
+## What it opens on
+
+**Today and yesterday, worst first.** The list groups under sticky day headers —
+`Today` / `Yesterday` / `Earlier` — and sorts by severity inside each, because sorting by severity
+alone floats a fatal incident from nine days ago above a highway that closed this morning.
+
+Everything else is one control away. The **window** widens to 7, 30 or 90 days; the **severity** chips
+start with `normal` switched off, because 163 gauges report every ten minutes and on a quiet day all
+but a handful sit below their warning level — 159 rows of "nothing is happening" ahead of anything
+that is. One click brings them back.
+
+**The window filters events, not state.** An incident or a closed GDACS episode happened on a date, so
+an older one drops out of a two-day view. A gauge reading, a forecast, an open alert and a roadblock
+still in force describe the *present* — a highway blocked since July is cutting people off right now,
+and hiding it from a "recent" view because it started weeks ago would be the most dangerous kind of
+tidy. Those carry `current: true` and are always shown, grouped under `Earlier` with their real start
+date.
+
+---
+
 ## What "live" means here
 
 There is nothing to subscribe to: BIPAD is a read-only REST API over a Django admin, with no
