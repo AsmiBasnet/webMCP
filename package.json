@@ -9,12 +9,10 @@
     "refdata": "node scripts/build-refdata.mjs",
     "snapshot": "node scripts/build-snapshot.mjs",
     "serve": "npx http-server public -p 8787 -c-1",
-    "test:tools": "node scripts/smoke.mjs",
-    "test:e2e": "node scripts/e2e.mjs",
+    "test:dash": "node scripts/dash-test.mjs",
     "test:offline": "node scripts/offline-test.mjs",
     "deploy": "npx wrangler pages deploy ./public --project-name sankatsathi",
-    "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy",
-    "test:dash": "node scripts/dash-test.mjs"
+    "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy"
   },
   "devDependencies": {
     "playwright": "^1.62.1"

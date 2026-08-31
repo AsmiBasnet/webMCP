@@ -7,7 +7,7 @@
 // says so rather than passing stale casualty figures off as current.
 //
 // This is a cache for resilience, not a republication of the dataset. Keys must
-// match the `snapshotKey` values used in tools.js.
+// match the `snapshotKey` values used in api.js and feed.js.
 
 import { writeFile, readFile, mkdir } from "node:fs/promises";
 
@@ -21,7 +21,6 @@ const CAPTURES = [
   ["incidents", `${BIPAD}/incident/?expand=loss&ordering=-incident_on&limit=500&incident_on__gt=${daysAgo(365)}`],
   ["rivers", `${BIPAD}/river/?water_level_on__gt=${daysAgo(2)}&ordering=-water_level_on&limit=500`],
   ["highways", `${BIPAD}/highway/?limit=500`],
-  ["resources", `${BIPAD}/resource/?resource_type=evacuationcentre&limit=500`],
   ["gdacs", "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH" +
     `?eventlist=FL,EQ,TC,DR&country=Nepal&fromDate=2015-01-01&toDate=${iso(Date.now())}`],
   // Copernicus EMS sends no CORS header, so the browser cannot reach it

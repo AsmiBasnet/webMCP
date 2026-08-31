@@ -8,16 +8,11 @@ a fifth, satellite damage assessment in a sixth — each with its own shape, its
 own idea of what counts as serious. This puts all six on one screen, normalised into one record type
 you can filter, sort and open up.
 
-Two pages, sharing one data layer:
+One page. It opens on today and yesterday, worst first. Filter by source, severity, district, type,
+window and free text; click any record for every field the source published, its provenance, and the
+raw payload verbatim.
 
-- **`index.html`** — the live view. Opens on today and yesterday, worst first. Filter by source,
-  severity, district, type, window and free text; click any record for every field the source
-  published, its provenance, and the raw payload.
-- **`explore.html`** — the same data as [WebMCP](https://github.com/webmachinelearning/webmcp) tools,
-  so an agent can query it in a sentence. Thirteen tools, plus a deterministic keyword ask box for
-  browsers with no agent.
-
-Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Devpost, 2026).
+No build step, no bundler, no keys, no server — five ES modules and a stylesheet.
 
 > It issues no orders and sends no alerts. It has no authority to.
 
@@ -46,9 +41,6 @@ row for the whole activation would hide which valley is worst. As of the last ca
 It takes two calls, since the activation list carries no geometry and no statistics and each open
 activation's detail is fetched separately. It is also the one source that cannot be read from a
 browser at all.
-
-The explorer exposes the same data as `get_damage_assessment`, so an agent can ask *"how many
-buildings were destroyed in Rasuwa"* and get the satellite count rather than the incident record's.
 
 Each source is fetched in parallel, and **a source that fails does not fail the load**. An unreachable
 gauge network is no reason to hide the road closures; the failure is named in the status bar and the
@@ -197,32 +189,21 @@ reporting perfectly well; counting everything fetched would report "Alerts 17" w
 
 ```
 public/
-  index.html          the live view
+  index.html          the page
   dash.css            its styles
-  explore.html        the agent / ask-box page
-  styles.css          its styles
   data/               refdata.json + snapshot/
   js/
-    feed.js           six sources → one record type; severity, buckets, filters
-    dash.js           filter bar, list, drill-down, map, refresh loop
+    config.js         endpoints, proxy, Nepal bounds
     api.js            fetch, memo, snapshot fallback, provenance, coordinate guard
     refdata.js        name → id, ward → municipality → district
-    tools.js          the thirteen tools
-    webmcp.js         tool specs and document.modelContext registration
-    ask.js            deterministic keyword router (no model)
-    app.js            explorer boot
-    render.js         one renderer per tool
-    charts.js         inline SVG gauge bars, hydrographs, stacked bars
-    map.js            Leaflet layers for the explorer
+    feed.js           six sources → one record type; severity, day buckets, filters
+    dash.js           filter bar, list, drill-down, map, refresh loop
 scripts/
   build-refdata.mjs   admin hierarchy + hazard taxonomy → data/refdata.json
-  build-snapshot.mjs  seven captures, plus one per open EMS activation → data/snapshot/
-  dash-test.mjs       the live view
-  smoke.mjs           every tool against the live APIs
-  e2e.mjs             browser: WebMCP registration, agent calls, rendering, overflow
-  offline-test.mjs    every upstream blocked
-  shot.mjs            screenshots three explorer answers (gaps, casualties, forecast)
-worker.js             optional Cloudflare proxy — caching and http-only photos, not CORS
+  build-snapshot.mjs  six captures, plus one per open EMS activation → data/snapshot/
+  dash-test.mjs       six sources, day grouping, filters, drill-down, refresh, mid-session outage
+  offline-test.mjs    every upstream dead before first byte — snapshot only
+worker.js             Cloudflare proxy — required for Copernicus, optional for the rest
 ```
 
 ---
@@ -238,20 +219,13 @@ npm run serve       # http-server on :8787
 ```
 
 - Live view: <http://127.0.0.1:8787/>
-- Agent tools and ask box: <http://127.0.0.1:8787/explore.html>
-- Snapshot mode, for a demo with no network: <http://127.0.0.1:8787/explore.html?mode=snapshot>
-
-For the agent path, open the explorer in Chrome with `chrome://flags/#enable-webmcp-testing`, or
-inside an agent that implements `document.modelContext`. Without one the page says so plainly and the
-ask box runs the identical tools locally.
+- Snapshot mode, for a demo with no network: <http://127.0.0.1:8787/?mode=snapshot>
 
 ### Verify it
 
 ```bash
-npm run test:dash      # six sources, day grouping, filters, drill-down, refresh, degradation
-npm run test:tools     # every tool against the live APIs
-npm run test:e2e       # real browser: WebMCP registration, agent calls, rendering, overflow
-npm run test:offline   # every upstream API blocked — snapshot fallback
+npm run test:dash      # six sources, day grouping, filters, drill-down, refresh, mid-session outage
+npm run test:offline   # every upstream dead before the first byte — snapshot only
 ```
 
 `test:dash` asserts the things that are easy to get quietly wrong: that all six sources contribute,
@@ -260,8 +234,9 @@ reveals the rest, that widening the window re-fetches rather than re-filters, th
 provenance and raw payload, that Copernicus still yields records from its snapshot and discloses that
 it did, and that an induced outage keeps the last good records on screen while saying so.
 
-[`PROMPTS.md`](PROMPTS.md) lists sixty prompts for the explorer, grouped by tool, each run against the
-live router before being written down.
+`test:offline` is the harder case: every upstream is dead *before the first byte*, so there is no last
+good reading to fall back on. All six sources must render from the snapshot, every one must be
+labelled stale, the filters must still work, and nothing on screen may claim to be live.
 
 ---
 

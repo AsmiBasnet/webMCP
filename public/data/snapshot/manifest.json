@@ -1,5 +1,5 @@
 {
-  "capturedOn": "2026-08-31T00:57:46.489Z",
+  "capturedOn": "2026-08-31T01:19:17.416Z",
   "note": "Local cache for demo resilience. Live data is always preferred; the UI states when it is showing this instead.",
   "sources": [
     {
@@ -13,10 +13,6 @@
     {
       "key": "highways",
       "url": "https://bipadportal.gov.np/api/v1/highway/?limit=500"
-    },
-    {
-      "key": "resources",
-      "url": "https://bipadportal.gov.np/api/v1/resource/?resource_type=evacuationcentre&limit=500"
     },
     {
       "key": "gdacs",
