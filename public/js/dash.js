@@ -529,10 +529,12 @@ function wire() {
       } else if (target === "tab-map") {
         document.querySelector("#map-section")?.scrollIntoView({ behavior: "smooth" });
         if (map) setTimeout(() => map.invalidateSize(), 300);
-      } else if (target === "tab-webmcp") {
-        document.querySelector("#webmcp-section")?.scrollIntoView({ behavior: "smooth" });
       } else if (target === "tab-sources") {
-        document.querySelector("#sources-section")?.scrollIntoView({ behavior: "smooth" });
+        const sec = document.querySelector("#sources-section");
+        if (sec) {
+          if (sec.tagName === "DETAILS") sec.open = true;
+          sec.scrollIntoView({ behavior: "smooth" });
+        }
       }
     });
   });
