@@ -130,7 +130,47 @@
   <div id="summary" aria-label="Summary of the current view"></div>
 </div>
 
-<!-- 6. Filter & Search Controls Bar -->
+<!-- 6. Command Band — the map and the agent's readout, side by side and above
+     everything else. The map is the first thing on the page because it is the
+     one view that answers "where"; the panel beside it is where a WebMCP tool
+     call becomes something the person watching can read. -->
+<section class="wrap command-band" id="map-section">
+
+  <div class="band-card band-card--map">
+    <div class="band-head">
+      <h2><i class="fa-solid fa-map-location-dot text-red"></i> Crisis Map</h2>
+      <div class="map-legend" aria-hidden="true">
+        <span class="lg lg--critical">critical</span>
+        <span class="lg lg--serious">serious</span>
+        <span class="lg lg--warning">warning</span>
+        <span class="lg lg--normal">normal</span>
+        <span class="lg lg--info">info</span>
+      </div>
+      <button type="button" class="band-act" id="map-whole" title="Zoom back out to the whole of Nepal">
+        <i class="fa-solid fa-earth-asia"></i> <span>Whole Nepal</span>
+      </button>
+    </div>
+    <div id="map" class="leaflet-map-wrapper"></div>
+    <!-- What the map is showing, including what it is NOT showing: records the
+         source published without coordinates cannot appear here, and a map that
+         stays quiet about that reads as an empty district. -->
+    <p id="map-caption" class="map-caption" aria-live="polite"></p>
+  </div>
+
+  <div class="band-card band-card--agent" id="agent-card">
+    <div class="band-head">
+      <h2><i class="fa-solid fa-robot text-blue"></i> Agent Readout</h2>
+      <span class="band-head-note" id="agent-badge">11 WebMCP tools</span>
+      <button type="button" class="band-act" id="agent-clear" hidden>
+        <i class="fa-solid fa-xmark"></i> <span>Clear</span>
+      </button>
+    </div>
+    <div id="agentcast" class="agentcast" aria-live="polite" aria-atomic="false"></div>
+  </div>
+
+</section>
+
+<!-- 7. Filter & Search Controls Bar -->
 <div class="wrap filter-container">
   <div class="filters">
     <div class="fgroup">
@@ -187,7 +227,7 @@
   </div>
 </div>
 
-<!-- 7. Main Two-Column Layout Grid -->
+<!-- 8. Main Two-Column Layout Grid -->
 <main class="wrap main-layout-grid">
   <!-- Left Column: Unified Records Feed -->
   <section class="pane pane--list" aria-label="Records List">
@@ -198,22 +238,19 @@
     <div id="rows" class="records-container"></div>
   </section>
 
-  <!-- Right Column: Interactive Map & Drill-Down Detail Drawer -->
-  <section class="pane pane--sidebar" id="map-section" aria-label="Map and Details">
-    <div class="sidebar-card">
-      <div class="sidebar-header">
-        <h2><i class="fa-solid fa-map-location-dot text-red"></i> Incident & Gauge Map</h2>
-      </div>
-      <div id="map" class="leaflet-map-wrapper"></div>
-    </div>
-
+  <!-- Right Column: Drill-Down Detail Drawer. The map used to live here; it is
+       now the first card on the page, in the command band above. -->
+  <section class="pane pane--sidebar" id="detail-section" aria-label="Record details">
     <div class="sidebar-card detail-card-container">
+      <div class="sidebar-header">
+        <h2><i class="fa-solid fa-magnifying-glass-chart text-blue"></i> Record Drill-Down</h2>
+      </div>
       <div id="detail" aria-live="polite"></div>
     </div>
   </section>
 </main>
 
-<!-- 8. Sources & Provenance Section (Collapsible) -->
+<!-- 9. Sources & Provenance Section (Collapsible) -->
 <details class="wrap section-card collapsible-sources" id="sources-section">
   <summary class="section-card-header">
     <div class="section-title-group">

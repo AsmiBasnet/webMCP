@@ -9,8 +9,13 @@
 // pans. That is the point of WebMCP over DOM actuation: the page declares what
 // it can do, rather than the agent guessing which button to click.
 //
-// Nothing here is visible in the interface. The tools exist for agents and for
-// DevTools; the page renders identically whether or not anything reads them.
+// Every call is also narrated on screen. The panel beside the map — see
+// agentview.js — renders what the tool just answered, and lights up the records
+// it answered from, because an agent that says "Rasuwa is cut off" is only half
+// an answer if the person next to it cannot see what that was read from.
+// The narration is a transcript, not a second code path: it renders fields off
+// the same object the agent received, and it moves no filter, no selection and
+// no map viewport, so the read tools stay honestly readOnlyHint.
 //
 // The API lives on `document.modelContext` (Chrome 149+, behind
 // chrome://flags/#enable-webmcp-testing or the origin trial). Older builds and
@@ -363,6 +368,10 @@ function specs(ctl) {
             (surveyed ? `, ${affected.toLocaleString()} of ${surveyed.toLocaleString()} buildings graded affected from orbit` : "") +
             `.` + (divergence.length ? ` ${divergence.length} divergence(s) between sources — see below.` : ""),
           district,
+          // Stated once, here, so nothing downstream has to re-add the parts and
+          // arrive at a different total. The empty branch above reports the same
+          // field as 0.
+          records: here.length,
           windowDays: state.filters.days,
           incidents: { count: incidents.length, deaths, missing, injured, housesDestroyed: sum(incidents, "Houses destroyed"), records: incidents.map(brief) },
           gauges: of("river").map(brief),
@@ -604,11 +613,19 @@ export async function installWebMCP(ctl) {
           inputSchema: spec.inputSchema,
           annotations: spec.annotations,
           async execute(args = {}, opts = {}) {
+            const t0 = performance.now();
             try {
-              return asText(await spec.execute(args, opts));
+              const result = await spec.execute(args, opts);
+              // Narration is best-effort and cannot alter what the agent is
+              // told: ctl.narrate swallows its own failures, and it only reads
+              // the result object it is handed.
+              ctl.narrate?.({ tool: spec.name, args, result, ms: Math.round(performance.now() - t0) });
+              return asText(result);
             } catch (err) {
-              // Fail loudly. An agent must never read a tool failure as "no
-              // incidents" when the subject is people dying.
+              // Fail loudly, on screen as well as to the agent. An agent must
+              // never read a tool failure as "no incidents" when the subject is
+              // people dying, and neither must the person watching.
+              ctl.narrate?.({ tool: spec.name, args, error: err.message, ms: Math.round(performance.now() - t0) });
               return (
                 `${spec.name} could not complete: ${err.message}. This is a tool failure, not a finding — ` +
                 `do not report it as an absence of events.\n\n${FOOTER}`
@@ -624,9 +641,9 @@ export async function installWebMCP(ctl) {
     }
   }
 
-  // The only trace any of this leaves in the product: one console line. The
-  // interface is unchanged, which is the intent — these tools are for agents
-  // reading the page, not a feature for the person looking at it.
+  // One console line for whoever opens DevTools. The visible trace is the
+  // readout beside the map, which stays in its idle state until something
+  // actually calls a tool.
   console.info(
     `[WebMCP] ${registered.length} tools registered on this page ` +
       `(${native ? "native document.modelContext" : "local shim — this browser has no WebMCP"}).\n` +

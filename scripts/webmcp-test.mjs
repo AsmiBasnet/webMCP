@@ -78,8 +78,11 @@ for (const t of tools) console.log(`  ${t.readOnly ? "read " : "WRITE"}  ${t.nam
 check("eleven tools registered", tools.length === 11, `${tools.length}`);
 check("every tool has a description", await p.evaluate(async () =>
   (await document.modelContext.getTools()).every((t) => (t.description ?? "").length > 80)));
-check("no tool surface leaked into the UI", await p.evaluate(() =>
-  !/webmcp|modelContext|tool/i.test(document.querySelector("header").textContent)));
+// The readout beside the map is the one place the tool surface is meant to
+// show, and until something calls a tool it must sit in its idle state. A page
+// that opens already displaying a reading is displaying a call nobody made.
+check("the readout is idle before any tool has run", await p.evaluate(() =>
+  !!document.querySelector("#agentcast .ac-idle") && !document.querySelector("#agentcast .ac-entry")));
 
 // --- read tools ------------------------------------------------------------
 console.log("\n-- read tools --");
@@ -253,6 +256,66 @@ check("concurrent refreshes both report truthfully",
 const v6 = await view();
 check("...and the window that was asked for is the window that loaded",
   v6.days === 7 && v6.daysControl === "7", `${v6.days}/${v6.daysControl}`);
+await call("reset_view");
+
+// --- the readout: what the person watching is shown ------------------------
+//
+// The tools answer in JSON to an agent. These checks are about the other half:
+// that the same call is legible to the responder sitting next to it, and that
+// the panel never claims more than the tool did.
+console.log("\n-- the readout --");
+
+await call("reset_view");
+const litBefore = await p.$$eval("#rows .row--lit", (e) => e.length);
+
+await call("filter_records", { window: 7 });
+const xr = await call("cross_reference_district", { district: xdistrict });
+
+const readout = await p.evaluate(() => ({
+  tool: document.querySelector("#agentcast .ac-tool")?.textContent.trim(),
+  kind: document.querySelector("#agentcast .ac-kind")?.textContent.trim(),
+  headline: document.querySelector("#agentcast .ac-headline")?.textContent ?? "",
+  notes: [...document.querySelectorAll("#agentcast .ac-note")].map((x) => x.textContent),
+  trail: document.querySelectorAll("#agentcast .ac-trail-pill").length,
+  caption: document.querySelector("#map-caption")?.textContent ?? "",
+  lit: document.querySelectorAll("#rows .row--lit").length,
+  filters: JSON.stringify(window.SankatSathi.state.filters.district),
+}));
+
+check("a read tool paints itself into the readout", readout.tool === "cross_reference_district", readout.tool);
+check("...labelled read-only, not as a change to the view", /read only/i.test(readout.kind ?? ""), readout.kind);
+check(`...naming the district it answered for (${xdistrict})`, readout.headline.includes(xdistrict),
+  readout.headline.slice(0, 60));
+check("...while still filtering nothing", readout.filters === '""', readout.filters);
+check("...lighting that district in the feed instead", readout.lit > litBefore, `${litBefore} to ${readout.lit}`);
+check("...and saying under the map what is lit", readout.caption.includes(xdistrict), readout.caption.slice(0, 90));
+
+// The panel must not summarise a divergence away. Every one the tool reported
+// has to appear in full, because the wording is the finding.
+const dv = JSON.parse(xr.match(/\{[\s\S]*\}/)[0]).divergence ?? [];
+check("every divergence the tool reported is rendered, not condensed",
+  dv.every((d) => readout.notes.some((t) => t.includes(d.slice(0, 40)))), `${dv.length} divergence(s)`);
+check("the trail keeps the earlier calls in this prompt", readout.trail >= 2, `${readout.trail}`);
+
+await call("filter_records", { sources: ["road"] });
+const wrote = await p.evaluate(() => ({
+  tool: document.querySelector("#agentcast .ac-tool")?.textContent.trim(),
+  kind: document.querySelector("#agentcast .ac-kind")?.textContent.trim(),
+}));
+check("a write tool is labelled as having moved the view",
+  wrote.tool === "filter_records" && /moved the view/i.test(wrote.kind), `${wrote.tool} / ${wrote.kind}`);
+
+// A refusal is the thing most worth seeing and the easiest thing to bury.
+await call("filter_records", { district: "Nowhere" });
+const refusal = await p.evaluate(() =>
+  [...document.querySelectorAll("#agentcast .ac-note--warn")].map((x) => x.textContent).join(" "));
+check("a refused argument is shown to the person, not only to the agent",
+  /matched nothing/.test(refusal), refusal.slice(0, 70));
+
+await p.click("#agent-clear");
+check("clearing the readout returns it to idle and unlights the feed", await p.evaluate(() =>
+  !!document.querySelector("#agentcast .ac-idle") &&
+  document.querySelectorAll("#rows .row--lit").length === 0));
 await call("reset_view");
 
 // --- honesty ---------------------------------------------------------------

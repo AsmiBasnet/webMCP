@@ -6,8 +6,11 @@ incident record against the gauges, the roadblocks, the international alert, the
 the satellite, and several of them end in a contradiction between two official sources that
 only shows up when you put them side by side.
 
-Nothing in the interface mentions any of this. The surface is `document.modelContext`, visible
-only to an agent or to DevTools.
+The surface is `document.modelContext` — nothing in the page advertises it. But the answers are
+not hidden: every call is narrated in the **Agent Readout** beside the map at the top of the page,
+and the records the answer came from light up on the map and in the feed. Read tools paint their
+reading and light the ground they read; they still filter nothing and move no viewport. Write tools
+paint what they changed, and what they refused to change.
 
 **Where to type them**
 

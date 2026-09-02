@@ -1703,8 +1703,715 @@ html:not(.js) .nojs {
 }
 
 /* ==========================================================================
-   10. Responsive Breakpoints
+   10. Command Band — the map, and the agent's readout beside it
+
+   The map used to sit in the right-hand sidebar, below the fold on every
+   screen. It is the one view that answers "where", so it is now the first card
+   on the page, full width, with the agent readout alongside it: when a tool
+   call moves the map, the reading that moved it is next to it rather than in a
+   console nobody has open.
    ========================================================================== */
+
+.command-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: stretch;
+  padding-top: 1rem;
+  scroll-margin-top: 124px;   /* clears the two sticky bars */
+}
+
+.band-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.band-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-color);
+  min-height: 46px;
+  flex-wrap: wrap;
+}
+
+.band-head h2 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.band-head-note {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.band-act {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.band-act:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* --- Map ---------------------------------------------------------------- */
+
+.map-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lg::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.lg--critical::before { background: var(--critical); }
+.lg--serious::before  { background: var(--serious); }
+.lg--warning::before  { background: var(--warning); }
+.lg--normal::before   { background: var(--normal); }
+.lg--info::before     { background: var(--info); }
+
+.band-card--map .leaflet-map-wrapper {
+  flex: 1 1 auto;
+  height: auto;
+  /* Tall enough to read a river corridor, short enough that the caption under
+     it still lands above the fold on a 900px laptop. */
+  min-height: 380px;
+  width: 100%;
+}
+
+/* What the map is showing, and what it is not. */
+.map-caption {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.map-caption b { color: var(--text-main); }
+.cap-sep { color: var(--border-color); }
+
+.cap-warn,
+.cap-lit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--radius-pill);
+  padding: 1px 9px;
+  font-weight: 600;
+}
+
+.cap-warn {
+  color: #92400e;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+.cap-lit {
+  color: var(--color-primary-hover);
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+}
+
+/* ==========================================================================
+   11. Agent Readout — a WebMCP tool call, rendered for the person watching
+   ========================================================================== */
+
+.agentcast {
+  flex: 1 1 auto;
+  /* Sized to the map beside it, and scrolls internally rather than stretching
+     the band: a long cross-reference must not push the filters off screen. */
+  min-height: 380px;
+  max-height: 560px;
+  overflow-y: auto;
+  padding: 14px;
+  scrollbar-width: thin;
+}
+
+/* --- Idle state --------------------------------------------------------- */
+
+.ac-idle {
+  text-align: center;
+  padding: 1.5rem 0.5rem;
+  color: var(--text-muted);
+}
+
+.ac-idle-icon {
+  font-size: 1.9rem;
+  color: var(--text-light);
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.ac-idle-lead {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-main);
+  margin-bottom: 0.4rem;
+}
+
+.ac-idle-sub {
+  font-size: 0.84rem;
+  line-height: 1.55;
+  max-width: 44ch;
+  margin: 0 auto 0.9rem;
+}
+
+.ac-idle-sub code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.ac-idle-code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  text-align: left;
+  background: var(--devpost-nav-bg);
+  color: #7dd3fc;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* --- One call ----------------------------------------------------------- */
+
+.ac-entry {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 12px;
+}
+
+.ac-entry--bad { border-left-color: var(--critical); }
+
+.ac-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.ac-tool {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.ac-kind {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.ac-kind--read  { background: var(--bg-subtle); color: var(--text-light); border: 1px solid var(--border-color); }
+.ac-kind--write { background: var(--info-bg);   color: var(--info);       border: 1px solid var(--info-border); }
+
+.ac-time {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--text-light);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.ac-args {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-light);
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+
+.ac-summary {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.ac-headline {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.ac-headline b { font-size: 1.5rem; font-weight: 800; margin-right: 6px; }
+
+.ac-headline-sub {
+  display: block;
+  font-family: var(--font-main);
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.ac-h4 {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-light);
+  margin: 14px 0 7px;
+}
+
+.ac-h4--warn { color: #92400e; display: flex; align-items: center; gap: 6px; }
+
+.ac-p { font-size: 0.84rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 5px; }
+.ac-p b { color: var(--text-main); }
+
+.ac-foot { font-size: 0.74rem; color: var(--text-light); margin-top: 8px; }
+
+/* --- Severity row ------------------------------------------------------- */
+
+.ac-sevrow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+.ac-sev {
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  border: 1px solid;
+}
+
+.ac-sev b { font-weight: 800; margin-right: 3px; }
+
+.ac-sev--critical { background: var(--critical-bg); color: #991b1b; border-color: var(--critical-border); }
+.ac-sev--serious  { background: var(--serious-bg);  color: #9a3412; border-color: var(--serious-border); }
+.ac-sev--warning  { background: var(--warning-bg);  color: #92400e; border-color: var(--warning-border); }
+.ac-sev--normal   { background: var(--normal-bg);   color: #065f46; border-color: var(--normal-border); }
+.ac-sev--info     { background: var(--info-bg);     color: #1e40af; border-color: var(--info-border); }
+
+/* --- Stat tiles --------------------------------------------------------- */
+
+.ac-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.ac-tile {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  min-width: 0;
+}
+
+.ac-tile b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-main);
+}
+
+.ac-tile span {
+  font-size: 0.68rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ac-tile--critical { background: var(--critical-bg); border-color: var(--critical-border); }
+.ac-tile--critical b { color: #991b1b; }
+.ac-tile--serious  { background: var(--serious-bg);  border-color: var(--serious-border); }
+.ac-tile--serious b { color: #9a3412; }
+.ac-tile--damage   { background: var(--damage-bg);   border-color: var(--damage-border); }
+.ac-tile--damage b { color: #6b21a8; }
+
+/* --- Notes: divergences, refusals, anything not to be skimmed ----------- */
+
+.ac-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  padding: 9px 11px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin-bottom: 7px;
+}
+
+.ac-note i { margin-top: 3px; flex-shrink: 0; }
+.ac-note span { overflow-wrap: anywhere; }
+
+.ac-note--warn { background: var(--warning-bg);  border-color: var(--warning-border);  color: #92400e; }
+.ac-note--bad  { background: var(--critical-bg); border-color: var(--critical-border); color: #991b1b; }
+.ac-note--ok   { background: var(--normal-bg);   border-color: var(--normal-border);   color: #065f46; }
+.ac-note--info { background: var(--info-bg);     border-color: var(--info-border);     color: #1e40af; }
+
+/* --- Chips -------------------------------------------------------------- */
+
+.ac-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.ac-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.ac-chip--ok { background: var(--normal-bg); border-color: var(--normal-border); color: #065f46; }
+
+.ac-more-inline { font-size: 0.72rem; color: var(--text-light); align-self: center; }
+
+/* --- Source bars -------------------------------------------------------- */
+
+.ac-bars { display: flex; flex-direction: column; gap: 4px; }
+
+.ac-bar {
+  display: grid;
+  grid-template-columns: minmax(70px, 92px) 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+}
+
+.ac-bar-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-bar-track {
+  height: 8px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.ac-bar-fill { display: block; height: 100%; border-radius: var(--radius-pill); }
+
+.ac-bar-fill--incident { background: var(--critical); }
+.ac-bar-fill--river    { background: var(--color-primary); }
+.ac-bar-fill--road     { background: var(--serious); }
+.ac-bar-fill--alert    { background: var(--warning); }
+.ac-bar-fill--forecast { background: var(--normal); }
+.ac-bar-fill--damage   { background: var(--damage); }
+
+.ac-bar-val {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-main);
+  min-width: 2.5ch;
+  text-align: right;
+}
+
+/* --- Source health ------------------------------------------------------ */
+
+.ac-health { display: flex; flex-direction: column; gap: 3px; }
+
+.ac-health-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  font-size: 0.76rem;
+}
+
+.ac-health-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-light); }
+
+.ac-health-row--live        .ac-health-dot { background: var(--normal); }
+.ac-health-row--snapshot    .ac-health-dot { background: var(--warning); }
+.ac-health-row--unreachable .ac-health-dot { background: var(--critical); }
+
+.ac-health-row--snapshot    { background: var(--warning-bg); }
+.ac-health-row--unreachable { background: var(--critical-bg); }
+
+.ac-health-name {
+  font-weight: 600;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-health-status {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.ac-health-count { font-family: var(--font-mono); font-weight: 600; color: var(--text-main); }
+
+/* --- Record rows inside the readout ------------------------------------- */
+
+.ac-rows { display: flex; flex-direction: column; gap: 4px; }
+
+.ac-row {
+  display: grid;
+  grid-template-columns: 4px 1fr auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: all 0.12s ease;
+}
+
+.ac-row:hover { border-color: var(--color-primary); background: var(--info-bg); }
+
+.ac-row-sev { width: 4px; height: 26px; border-radius: 2px; background: var(--text-light); }
+.ac-row-sev.sev--critical { background: var(--critical); }
+.ac-row-sev.sev--serious  { background: var(--serious); }
+.ac-row-sev.sev--warning  { background: var(--warning); }
+.ac-row-sev.sev--normal   { background: var(--normal); }
+.ac-row-sev.sev--info     { background: var(--info); }
+
+.ac-row-main { min-width: 0; }
+
+.ac-row-title {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-row-line {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-row-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-radius: var(--radius-pill);
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.ac-more { font-size: 0.74rem; color: var(--text-light); margin-top: 5px; }
+
+/* --- Worst-hit districts ------------------------------------------------ */
+
+.ac-districts { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.ac-district {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 4px 11px;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.ac-district:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--info-bg); }
+
+.ac-district-counts { display: inline-flex; align-items: center; gap: 3px; font-size: 0.7rem; color: var(--text-light); }
+
+.ac-district-counts i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 4px;
+}
+
+.ac-district-counts i.sev--critical { background: var(--critical); }
+.ac-district-counts i.sev--serious  { background: var(--serious); }
+.ac-district-counts i.sev--warning  { background: var(--warning); }
+
+/* --- Metrics ------------------------------------------------------------ */
+
+.ac-metrics { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 0.78rem; }
+.ac-metrics > div { display: contents; }
+.ac-metrics dt { color: var(--text-light); white-space: nowrap; }
+.ac-metrics dd { color: var(--text-main); font-weight: 600; overflow-wrap: anywhere; }
+
+/* --- Actions the readout offers back to the person ---------------------- */
+
+.ac-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+
+.ac-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 5px 13px;
+  font-family: var(--font-main);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ac-act:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+
+/* --- Trail: every call one prompt made, in order ------------------------ */
+
+.ac-trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.ac-trail-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 3px 9px;
+  font-family: var(--font-main);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-light);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ac-trail-pill:hover { color: var(--color-primary); border-color: var(--color-primary); }
+.ac-trail-pill.on { background: var(--devpost-nav-bg); border-color: var(--devpost-nav-bg); color: #7dd3fc; }
+
+/* A feed row the readout is currently talking about. */
+.row--lit {
+  background: var(--info-bg);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* ==========================================================================
+   12. Responsive Breakpoints
+   ========================================================================== */
+
+/* The band goes single-column well before the main grid does: squeezing a map
+   and a readout into half a tablet leaves neither legible. */
+@media (max-width: 1180px) {
+  .command-band {
+    grid-template-columns: 1fr;
+  }
+  .band-card--map .leaflet-map-wrapper {
+    min-height: 360px;
+  }
+  .agentcast {
+    min-height: 0;
+    max-height: 460px;
+  }
+}
 
 @media (max-width: 1024px) {
   .hero-wrap {
@@ -1723,10 +2430,18 @@ html:not(.js) .nojs {
   }
 }
 
-@media (max-width: 640px) {
+/* Below this the nav could not fit its links on one line and pushed the whole
+   document sideways. The links collapse to the subnav, which scrolls. */
+@media (max-width: 960px) {
   .nav-links .nav-item {
     display: none;
   }
+  .nav-wrap {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
   .hero-title {
     font-size: 1.85rem;
   }
@@ -1739,5 +2454,51 @@ html:not(.js) .nojs {
   }
   input[type="search"], select {
     width: 100%;
+  }
+  .band-card--map .leaflet-map-wrapper {
+    min-height: 300px;
+  }
+  .agentcast {
+    max-height: 400px;
+    padding: 11px;
+  }
+  /* The legend drops to its own row under the map title; the button that used
+     to be pushed right by it goes with the title. Only the map card needs this
+     — the readout header has no legend, so its Clear button stays on the row. */
+  .map-legend {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .band-card--map .band-act {
+    margin-left: 0;
+  }
+  .ac-headline b { font-size: 1.3rem; }
+  .ac-tiles { grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); }
+}
+
+/* The donate button is the widest fixed element in the bar; below this it keeps
+   its icon and drops the words rather than widening the document. */
+@media (max-width: 480px) {
+  .btn-donate-global span {
+    display: none;
+  }
+  .btn-donate-global {
+    padding: 7px 11px;
+  }
+  .brand-name {
+    font-size: 1rem;
+  }
+  .brand-tag {
+    display: none;
+  }
+  .band-act span {
+    display: none;
+  }
+  /* Last thing on the readout header to give way, so Clear keeps its row. */
+  .band-head-note {
+    display: none;
+  }
+  .ac-bar {
+    grid-template-columns: minmax(60px, 78px) 1fr auto;
   }
 }

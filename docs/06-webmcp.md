@@ -32,8 +32,12 @@ Three things it standardises:
 | **JSON Schemas** | inputs and outputs stated explicitly, so an agent cannot invent an argument |
 | **State** | a shared view of what the page currently holds, in real time |
 
-It is a *progressive enhancement*. The tools are invisible to the interface; a browser
-without WebMCP renders exactly the same page.
+It is a *progressive enhancement*. A browser without WebMCP renders exactly the same page, and
+the page advertises no tools; nothing about the interface depends on an agent being there.
+
+What an agent does is not hidden from the human, though. Each call is narrated in the readout
+beside the map — see `public/js/agentview.js` — because an agent that concludes "Rasuwa is cut
+off" is half an answer if the responder next to it cannot see what that was read from.
 
 ## Status, as of August 2026
 

@@ -7,6 +7,7 @@ import { loadRefdata } from "./refdata.js";
 import { loadFeed, applyFilters, facets, groupByDay, SOURCES, SEVERITIES } from "./feed.js";
 import { health, snapshotMode } from "./api.js";
 import { installWebMCP } from "./webmcp.js";
+import * as agentview from "./agentview.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) =>
@@ -33,6 +34,12 @@ const state = {
   failures: 0,
   busy: false,
   selected: null,
+  // What the agent readout is currently talking about. A highlight, never a
+  // filter: nothing is removed from the list or the map, the records the last
+  // tool answered from are simply drawn louder, so the panel beside the map and
+  // the map itself cannot end up discussing different ground. Read tools set
+  // this; it is the only mark they leave.
+  spotlight: null,
   filters: {
     // Opens on today and yesterday. Everything older is one dropdown away —
     // the window is the escape hatch, not the default.
@@ -290,9 +297,17 @@ function renderList(rows) {
     .join("");
 }
 
+/** Is this record part of what the last tool call answered from? */
+function lit(r) {
+  const sp = state.spotlight;
+  if (!sp) return false;
+  if (sp.district && r.district === sp.district) return true;
+  return !!sp.ids?.includes(r.id);
+}
+
 function rowHtml(r) {
   return `
-    <button type="button" class="row${state.selected === r.id ? " sel" : ""}" data-id="${esc(r.id)}">
+    <button type="button" class="row${state.selected === r.id ? " sel" : ""}${lit(r) ? " row--lit" : ""}" data-id="${esc(r.id)}">
       <span class="row-sev sev--${r.severity}" title="${esc(r.severityLabel)}"></span>
       <span class="row-main">
         <span class="row-title">${esc(r.title)}</span>
@@ -425,22 +440,38 @@ function renderMap(rows) {
   if (markers.layer) map.removeLayer(markers.layer);
 
   const pts = rows.filter((r) => r.point);
+  renderMapCaption(rows, pts);
   if (!pts.length) { markers.layer = null; return; }
 
+  const anyLit = pts.some(lit);
+
   markers.layer = L.layerGroup(
-    pts.map((r) =>
-      L.circleMarker(r.point, {
-        radius: r.severity === "critical" ? 8 : r.severity === "serious" ? 6 : 4,
-        color: SEV_COLOUR[r.severity] ?? "#3987e5",
-        weight: 1.5,
-        fillOpacity: 0.35,
+    pts.flatMap((r) => {
+      const on = lit(r);
+      const base = r.severity === "critical" ? 8 : r.severity === "serious" ? 6 : 4;
+      const colour = SEV_COLOUR[r.severity] ?? "#3987e5";
+
+      const dot = L.circleMarker(r.point, {
+        radius: on ? base + 2 : base,
+        color: colour,
+        weight: on ? 3 : 1.5,
+        // When something is lit, everything else steps back, so the eye lands
+        // on the records the readout is actually talking about.
+        fillOpacity: on ? 0.85 : anyLit ? 0.12 : 0.35,
+        opacity: on ? 1 : anyLit ? 0.35 : 1,
       })
         .bindPopup(
           `<b>${esc(r.title)}</b><br><span class="meta">${esc(sourceLabel(r.source))} · ${esc(r.kind)}` +
           `${r.district ? ` · ${esc(r.district)}` : ""}</span><br>${esc(r.line)}`
         )
-        .on("click", () => { state.selected = r.id; renderAll(); })
-    )
+        .on("click", () => { state.selected = r.id; renderAll(); });
+
+      // A ring rather than a CSS class: circleMarker renders to SVG or canvas
+      // depending on the build, and only the style options work on both.
+      return on
+        ? [L.circleMarker(r.point, { radius: base + 8, color: colour, weight: 1, opacity: 0.55, fill: false }), dot]
+        : [dot];
+    })
   ).addTo(map);
 
   // Follow the district filter — narrowing to Rasuwa should show Rasuwa. Only
@@ -451,6 +482,34 @@ function renderMap(rows) {
     lastFitKey = fitKey;
     map.fitBounds(L.latLngBounds(pts.map((r) => r.point)), { padding: [24, 24], maxZoom: 11 });
   }
+}
+
+/** What the map is showing — and, just as importantly, what it is not.
+ *
+ *  Plenty of BIPAD rows carry no coordinates. Those records are in the feed and
+ *  in every tool's answer but cannot be drawn, and a map that says nothing
+ *  about them reads as a quiet district to anyone scanning it. */
+function renderMapCaption(rows, pts) {
+  const el = $("#map-caption");
+  if (!el) return;
+
+  const missing = rows.length - pts.length;
+  const sp = state.spotlight;
+  const litCount = pts.filter(lit).length;
+
+  const parts = [
+    `<b>${pts.length}</b> of ${rows.length} record${rows.length === 1 ? "" : "s"} plotted`,
+    missing
+      ? `<span class="cap-warn"><i class="fa-solid fa-triangle-exclamation"></i> ${missing} published without ` +
+        `coordinates — in the feed, not on this map</span>`
+      : "",
+    sp?.label
+      ? `<span class="cap-lit"><i class="fa-solid fa-highlighter"></i> ${esc(sp.label)}` +
+        (litCount ? ` · ${litCount} lit here` : " · none of them are mappable") + `</span>`
+      : "",
+  ].filter(Boolean);
+
+  el.innerHTML = parts.join('<span class="cap-sep">·</span>');
 }
 
 // ---------------------------------------------------------------------------
@@ -477,6 +536,31 @@ function renderAll() {
   renderDetail();
   renderMap(rows);
   syncControls();
+}
+
+/** Re-draw only what a highlight touches.
+ *
+ *  A read tool must not move the view, so this deliberately does not call
+ *  renderAll: the filter chrome, the drill-down and the map's viewport are all
+ *  left exactly where the person left them. Only the list and the markers are
+ *  repainted, and only to draw the spotlit records louder. */
+function renderSpotlight() {
+  const rows = applyFilters(state.records, state.filters);
+  renderList(rows);
+  renderMap(rows);
+}
+
+/** Bring the map and the readout into view when a tool answers, so nobody has
+ *  to be told to scroll to see what the agent just did. Only when the band is
+ *  actually off screen, and never against a reduced-motion preference. */
+function revealBand() {
+  const band = $("#map-section");
+  if (!band) return;
+  const r = band.getBoundingClientRect();
+  if (r.top < window.innerHeight * 0.65 && r.bottom > 90) return;   // already looking at it
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  band.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  if (map) setTimeout(() => map.invalidateSize(), 400);
 }
 
 /** Push state back into the three controls that hold their own value.
@@ -590,6 +674,49 @@ function wire() {
     const b = e.target.closest("[data-id]"); if (!b) return;
     state.selected = state.selected === b.dataset.id ? null : b.dataset.id;
     renderAll();
+  });
+
+  // The readout hands the same tools back to the person. Clicking a district in
+  // it runs cross_reference_district exactly as an agent would — through
+  // document.modelContext, narrated the same way — so there is one path to the
+  // screen whoever pulls the lever.
+  const runTool = (name, args = {}) =>
+    Promise.resolve(document.modelContext?.executeTool(name, JSON.stringify(args)))
+      .catch((err) => console.warn(`[WebMCP] ${name} failed from the readout:`, err));
+
+  $("#agentcast")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]");
+    if (!b) return;
+    switch (b.dataset.act) {
+      case "select":
+        state.selected = state.selected === b.dataset.id ? null : b.dataset.id;
+        renderAll();
+        break;
+      case "trail":
+        state.spotlight = agentview.show(Number(b.dataset.i));
+        renderSpotlight();
+        break;
+      case "district":
+        runTool("cross_reference_district", { district: b.dataset.district });
+        break;
+      case "window":
+        runTool("filter_records", { window: Number(b.dataset.window) });
+        break;
+      case "tool":
+        runTool(b.dataset.tool, b.dataset.args ? JSON.parse(b.dataset.args) : {});
+        break;
+    }
+  });
+
+  $("#agent-clear")?.addEventListener("click", () => {
+    state.spotlight = agentview.clear();
+    renderSpotlight();
+  });
+
+  $("#map-whole")?.addEventListener("click", () => {
+    if (!map) return;
+    map.setView([28.2, 84.5], 7);
+    lastFitKey = null;   // a manual zoom-out must not block the next district fit
   });
 
   $("#refresh").addEventListener("click", () => refresh());
@@ -757,12 +884,33 @@ const controls = {
   },
 
   reset: () => resetFilters(),
+
+  /**
+   * Narrate a completed tool call into the panel beside the map.
+   *
+   * Called by webmcp.js for every tool, read or write, after the tool has
+   * already returned. It paints what was read and lights up the records the
+   * answer came from; it does not filter, select, or move the map, so a
+   * readOnlyHint tool stays honestly read-only.
+   */
+  narrate(call) {
+    try {
+      state.spotlight = agentview.record(call) ?? null;
+      renderSpotlight();
+      revealBand();
+    } catch (err) {
+      // The readout is presentation. If it throws, the agent still gets the
+      // result it asked for — a broken panel must never become a broken answer.
+      console.warn("[WebMCP] the readout failed to render this call:", err);
+    }
+  },
 };
 
 async function boot() {
   renderFilterChrome();
   wire();
   initMap();
+  agentview.paint();          // the idle state, so the panel is never a blank box
 
   try {
     await loadRefdata();

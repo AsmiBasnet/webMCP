@@ -13,7 +13,8 @@
     "test:offline": "node scripts/offline-test.mjs",
     "test:webmcp": "node scripts/webmcp-test.mjs",
     "deploy": "npx wrangler pages deploy ./public --project-name sankatsathi",
-    "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy"
+    "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy",
+    "shots": "node scripts/shots.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1"
