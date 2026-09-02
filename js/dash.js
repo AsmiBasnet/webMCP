@@ -425,6 +425,7 @@ function renderMap(rows) {
   if (markers.layer) map.removeLayer(markers.layer);
 
   const pts = rows.filter((r) => r.point);
+  renderMapCaption(rows, pts);
   if (!pts.length) { markers.layer = null; return; }
 
   markers.layer = L.layerGroup(
@@ -452,6 +453,26 @@ function renderMap(rows) {
     map.fitBounds(L.latLngBounds(pts.map((r) => r.point)), { padding: [24, 24], maxZoom: 11 });
   }
 }
+
+/** What the map is showing — and, just as importantly, what it is not.
+ *
+ *  Plenty of BIPAD rows carry no coordinates. Those records are in the feed and
+ *  in every tool's answer but cannot be drawn, and a map that says nothing
+ *  about them reads as a quiet district to anyone scanning it. */
+function renderMapCaption(rows, pts) {
+  const el = $("#map-caption");
+  if (!el) return;
+
+  const missing = rows.length - pts.length;
+  el.innerHTML =
+    `<b>${pts.length}</b> of ${rows.length} record${rows.length === 1 ? "" : "s"} plotted` +
+    (missing
+      ? `<span class="cap-sep">·</span><span class="cap-warn">` +
+        `<i class="fa-solid fa-triangle-exclamation"></i> ${missing} published without coordinates — ` +
+        `in the feed, not on this map</span>`
+      : "");
+}
+
 
 // ---------------------------------------------------------------------------
 
@@ -590,6 +611,12 @@ function wire() {
     const b = e.target.closest("[data-id]"); if (!b) return;
     state.selected = state.selected === b.dataset.id ? null : b.dataset.id;
     renderAll();
+  });
+
+  $("#map-whole")?.addEventListener("click", () => {
+    if (!map) return;
+    map.setView([28.2, 84.5], 7);
+    lastFitKey = null;   // a manual zoom-out must not block the next district fit
   });
 
   $("#refresh").addEventListener("click", () => refresh());
