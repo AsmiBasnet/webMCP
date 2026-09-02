@@ -127,43 +127,55 @@ function setBusy(busy) {
 // Status
 // ---------------------------------------------------------------------------
 
+const SOURCE_ICONS = {
+  incident: "fa-solid fa-triangle-exclamation",
+  river: "fa-solid fa-water",
+  road: "fa-solid fa-road-barrier",
+  alert: "fa-solid fa-bell",
+  forecast: "fa-solid fa-cloud-showers-heavy",
+  damage: "fa-solid fa-satellite",
+};
+
 function renderStatus(visible = null) {
   const el = $("#status");
-  if (!state.fetchedAt) { el.textContent = "Loading…"; return; }
+  if (!el) return;
+  if (!state.fetchedAt) {
+    el.innerHTML = `<span class="loading-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Syncing live disaster feeds…</span>`;
+    return;
+  }
 
   const secs = Math.round((Date.now() - state.fetchedAt) / 1000);
-  const when = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)} min ago`;
+  const when = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)}m ago`;
 
   const bad = new Set(state.errors.map((e) => e.source));
   const stale = state.stale ?? new Set();
-  const onSnapshot = stale.size > 0;
 
-  // Per-source dots, so a reader can see at a glance which feed is down rather
-  // than inferring it from a missing row.
-  const dots = SOURCES.map((s) => {
+  const chips = SOURCES.map((s) => {
     const off = !state.filters.sources.has(s.id);
     const broken = bad.has(s.id);
     const isStale = stale.has(s.id);
     const cls = off ? "off" : broken ? "bad" : isStale ? "stale" : "ok";
-    // Count what is on screen, not what was fetched. A source that returned 17
-    // records of which the window shows 1 is reported as 1 — otherwise the bar
-    // contradicts the list directly beneath it.
     const pool = visible ?? state.records;
     const count = pool.filter((r) => r.source === s.id).length;
-    const note = broken ? "unreachable" : isStale ? "serving stored snapshot, not live" : "live";
-    return `<span class="src src--${cls}" title="${esc(s.origin)} · updates ${esc(s.cadence)} · ${note}">` +
-      `<i></i>${esc(s.label)} <b>${off ? "—" : broken ? "failed" : isStale ? `${count} stale` : count}</b></span>`;
+    const note = broken ? "Feed unreachable" : isStale ? "Serving cached snapshot" : "Realtime feed live";
+    const icon = SOURCE_ICONS[s.id] || "fa-solid fa-database";
+
+    return `<div class="src-pill src-pill--${cls}" data-src="${s.id}" title="${esc(s.origin)} · updates ${esc(s.cadence)} · ${note} (Click to toggle filter)">
+      <span class="src-dot"></span>
+      <i class="${icon} src-icon"></i>
+      <span class="src-label">${esc(s.label)}</span>
+      <span class="src-count">${off ? "—" : broken ? "fail" : count}</span>
+    </div>`;
   }).join("");
 
-  el.innerHTML =
-    dots +
-    `<span class="status-when">` +
-    (snapshotMode || onSnapshot
-      ? `<b class="warn">${esc([...stale].join(", ") || "some sources")} serving stored snapshot — not live.</b> `
-      : "") +
-    `updated ${esc(when)}` +
-    (bad.size ? ` · <b class="bad-text">${bad.size} source${bad.size === 1 ? "" : "s"} unreachable</b>` : "") +
-    ` · auto every ${REFRESH_MS / 60_000} min</span>`;
+  el.innerHTML = `
+    <div class="status-sources-grid">
+      ${chips}
+    </div>
+    <div class="status-meta-group">
+      <span class="status-sync-pill"><i class="fa-solid fa-arrows-rotate"></i> Updated ${esc(when)} · Auto ${REFRESH_MS / 60_000}m</span>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------------------
@@ -507,6 +519,33 @@ async function resetFilters() {
 }
 
 function wire() {
+  document.querySelectorAll(".subnav-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".subnav-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      const target = tab.dataset.target;
+      if (target === "tab-feed") {
+        document.querySelector("#feed-section")?.scrollIntoView({ behavior: "smooth" });
+      } else if (target === "tab-map") {
+        document.querySelector("#map-section")?.scrollIntoView({ behavior: "smooth" });
+        if (map) setTimeout(() => map.invalidateSize(), 300);
+      } else if (target === "tab-sources") {
+        const sec = document.querySelector("#sources-section");
+        if (sec) {
+          if (sec.tagName === "DETAILS") sec.open = true;
+          sec.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+    });
+  });
+
+  $("#status")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-src]"); if (!b) return;
+    const id = b.dataset.src;
+    state.filters.sources.has(id) ? state.filters.sources.delete(id) : state.filters.sources.add(id);
+    renderFilterChrome(); renderAll();
+  });
+
   $("#f-sources").addEventListener("click", (e) => {
     const b = e.target.closest("[data-src]"); if (!b) return;
     const id = b.dataset.src;
@@ -762,3 +801,4 @@ boot();
 
 // For the console and for tests.
 window.SankatSathi = { state, refresh, loadFeed, applyFilters, controls };
+window.NepalDisasterWatch = window.SankatSathi;

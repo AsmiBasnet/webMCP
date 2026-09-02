@@ -90,17 +90,35 @@ function fromIncident(r) {
     point: latlng(r.point),
     line: bits.join(" · ") || "No casualties recorded",
     metrics: {
-      Deaths: deaths, Missing: missing, Injured: injured,
+      Deaths: deaths,
+      ...(num(L.peopleDeathFemaleCount) ? { "Deaths (Female)": num(L.peopleDeathFemaleCount) } : {}),
+      ...(num(L.peopleDeathMaleCount) ? { "Deaths (Male)": num(L.peopleDeathMaleCount) } : {}),
+      ...(num(L.peopleDeathDisabledCount) ? { "Deaths (Disabled)": num(L.peopleDeathDisabledCount) } : {}),
+      Missing: missing,
+      Injured: injured,
+      ...(num(L.peopleInjuredFemaleCount) ? { "Injured (Female)": num(L.peopleInjuredFemaleCount) } : {}),
+      ...(num(L.peopleInjuredMaleCount) ? { "Injured (Male)": num(L.peopleInjuredMaleCount) } : {}),
       "People affected": num(L.peopleAffectedCount),
       "Families affected": num(L.familyAffectedCount),
       "Families evacuated": num(L.familyEvacuatedCount),
+      "Families relocated": num(L.familyRelocatedCount),
       "Houses destroyed": num(L.infrastructureDestroyedHouseCount),
       "Bridges destroyed": num(L.infrastructureDestroyedBridgeCount),
       "Livestock lost": num(L.livestockDestroyedCount),
-      "Estimated loss": L.estimatedLoss ?? null,
+      "Estimated loss": L.estimatedLoss ? `रू ${Number(L.estimatedLoss).toLocaleString()}` : null,
       Verified: r.verified ? "yes" : "no",
       Approved: r.approved ? "yes" : "no",
       "Reported by": r.dataSource ?? null,
+    },
+    loss: {
+      deaths,
+      missing,
+      injured,
+      evacuated: num(L.familyEvacuatedCount) || num(L.familyRelocatedCount),
+      affected: num(L.peopleAffectedCount) || num(L.familyAffectedCount),
+      houses: num(L.infrastructureDestroyedHouseCount),
+      livestock: num(L.livestockDestroyedCount),
+      estimatedLoss: num(L.estimatedLoss),
     },
     raw: r,
   };
@@ -254,6 +272,39 @@ function fromAlert(f) {
       Report: p.url?.report ?? null,
     },
     raw: f,
+  };
+}
+
+function fromBipadAlert(r) {
+  const d = r.point ? nearestDistrict(latlng(r.point), distanceKm)?.district : null;
+  const isExpired = r.expireOn && new Date(r.expireOn).getTime() < Date.now();
+  const households = num(r.affectedDemography?.householdCount);
+
+  return {
+    id: `alert:bipad:${r.id}`,
+    source: "alert",
+    current: !isExpired,
+    kind: hazardName(r.hazard) || "National Alert",
+    title: r.title ?? "BIPAD Alert",
+    titleNe: r.titleNe ?? null,
+    at: r.startedOn ?? r.createdOn ?? null,
+    severity: isExpired ? "normal" : (households > 50_000 ? "critical" : "serious"),
+    severityLabel: isExpired ? "expired alert" : "active alert",
+    district: d?.en ?? null,
+    districtNe: d?.ne ?? null,
+    municipality: null,
+    point: latlng(r.point),
+    line: `${r.titleNe ? `${r.titleNe} · ` : ""}${households ? `${households.toLocaleString()} households in alert zone` : "Official Warning"}`,
+    metrics: {
+      "Alert Status": isExpired ? "Expired" : "Active",
+      "Source Agency": r.source ?? "NDRRMA / DHM",
+      "Started On": r.startedOn ?? null,
+      "Expires On": r.expireOn ?? null,
+      "Households in zone": households || null,
+      "People in zone": num(r.affectedDemography?.maleCount) + num(r.affectedDemography?.femaleCount) || null,
+      "Description": r.description ?? null,
+    },
+    raw: r,
   };
 }
 
@@ -495,6 +546,11 @@ export async function loadFeed({ days = 7, sources = null, force = false } = {})
       gdacsEvents({ from: daysAgo(Math.max(days, 30)), to: isoDate(Date.now()) })
         .then((j) => records.push(...(j.features ?? []).map(fromAlert)))
         .catch((e) => errors.push({ source: "alert", message: e.message }))
+    );
+    jobs.push(
+      bipad("alert", { ordering: "-created_on", limit: 200 }, { pages: 1, snapshotKey: "alerts", force })
+        .then((rows) => records.push(...rows.map(fromBipadAlert)))
+        .catch(() => {}) // non-fatal BIPAD alert fallback
     );
   }
 
