@@ -1723,10 +1723,19 @@ html:not(.js) .nojs {
   }
 }
 
-@media (max-width: 640px) {
+/* The nav links stop fitting on one line here, and .nav-wrap neither wraps nor
+   scrolls — so below this width they pushed the whole document sideways rather
+   than overflowing their own bar. They collapse to the subnav, which scrolls. */
+@media (max-width: 960px) {
   .nav-links .nav-item {
     display: none;
   }
+  .nav-wrap {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
   .hero-title {
     font-size: 1.85rem;
   }
@@ -1739,5 +1748,22 @@ html:not(.js) .nojs {
   }
   input[type="search"], select {
     width: 100%;
+  }
+}
+
+/* The donate button is the widest fixed element left in the bar; below this it
+   keeps its icon and drops the words rather than widening the document. */
+@media (max-width: 480px) {
+  .btn-donate-global span {
+    display: none;
+  }
+  .btn-donate-global {
+    padding: 7px 11px;
+  }
+  .brand-name {
+    font-size: 1rem;
+  }
+  .brand-tag {
+    display: none;
   }
 }
