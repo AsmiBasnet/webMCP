@@ -78,8 +78,14 @@ for (const t of tools) console.log(`  ${t.readOnly ? "read " : "WRITE"}  ${t.nam
 check("eleven tools registered", tools.length === 11, `${tools.length}`);
 check("every tool has a description", await p.evaluate(async () =>
   (await document.modelContext.getTools()).every((t) => (t.description ?? "").length > 80)));
-check("no tool surface leaked into the UI", await p.evaluate(() =>
-  !/webmcp|modelContext|tool/i.test(document.querySelector("header").textContent)));
+// The tools are for agents and for DevTools; the interface must not become a
+// console for them. Checked by tool name against the whole rendered page rather
+// than by the word "WebMCP" against the nav, which is deliberate branding and
+// says nothing about whether a tool surface has leaked into the product.
+check("no tool surface leaked into the UI", await p.evaluate((names) => {
+  const shown = document.body.innerText;
+  return !names.some((n) => shown.includes(n)) && !shown.includes("modelContext");
+}, tools.map((t) => t.name)));
 
 // --- read tools ------------------------------------------------------------
 console.log("\n-- read tools --");

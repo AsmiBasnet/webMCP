@@ -35,6 +35,11 @@ Three things it standardises:
 It is a *progressive enhancement*. The tools are invisible to the interface; a browser
 without WebMCP renders exactly the same page.
 
+What the five write tools do is not hidden, though: they drive the same filter bar, map and
+drill-down a person drives, so a call moves the screen the person is looking at. The map sits at
+the top of the page for that reason — a tool that pans a map below the fold has moved nothing
+anyone can see.
+
 ## Status, as of August 2026
 
 - **Origin trial** from Chrome 149.

@@ -363,6 +363,12 @@ function specs(ctl) {
             (surveyed ? `, ${affected.toLocaleString()} of ${surveyed.toLocaleString()} buildings graded affected from orbit` : "") +
             `.` + (divergence.length ? ` ${divergence.length} divergence(s) between sources — see below.` : ""),
           district,
+          // The empty branch above reports `records: 0`; without this the
+          // success branch reported no such field at all, so an agent reading
+          // `records` got a number when the district was quiet and undefined
+          // when it was not. Stated once, rather than left to be re-added from
+          // the parts and arrived at differently.
+          records: here.length,
           windowDays: state.filters.days,
           incidents: { count: incidents.length, deaths, missing, injured, housesDestroyed: sum(incidents, "Houses destroyed"), records: incidents.map(brief) },
           gauges: of("river").map(brief),
