@@ -1703,7 +1703,155 @@ html:not(.js) .nojs {
 }
 
 /* ==========================================================================
-   10. Responsive Breakpoints
+   10. Crisis Map Band
+
+   The map used to sit in the right-hand sidebar, below the fold on every
+   screen. It is the one view that answers "where", so it is now the first card
+   on the page, full width.
+   ========================================================================== */
+
+.command-band {
+  padding-top: 1rem;
+  scroll-margin-top: 124px;   /* clears the two sticky bars */
+}
+
+.band-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.band-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-color);
+  min-height: 46px;
+  flex-wrap: wrap;
+}
+
+.band-head h2 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+
+.band-act {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-family: var(--font-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.band-act:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* --- Map ---------------------------------------------------------------- */
+
+.map-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lg::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.lg--critical::before { background: var(--critical); }
+.lg--serious::before  { background: var(--serious); }
+.lg--warning::before  { background: var(--warning); }
+.lg--normal::before   { background: var(--normal); }
+.lg--info::before     { background: var(--info); }
+
+.band-card--map .leaflet-map-wrapper {
+  flex: 1 1 auto;
+  height: auto;
+  /* Tall enough to read a river corridor, short enough that the caption under
+     it still lands above the fold on a 900px laptop. */
+  min-height: 420px;
+  width: 100%;
+}
+
+/* What the map is showing, and what it is not. */
+.map-caption {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.map-caption b { color: var(--text-main); }
+.cap-sep { color: var(--border-color); }
+
+.cap-warn,
+.cap-lit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: var(--radius-pill);
+  padding: 1px 9px;
+  font-weight: 600;
+}
+
+.cap-warn {
+  color: #92400e;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+}
+
+.cap-lit {
+  color: var(--color-primary-hover);
+  background: var(--info-bg);
+  border: 1px solid var(--info-border);
+}
+
+/* ==========================================================================
+   11. Responsive Breakpoints
    ========================================================================== */
 
 @media (max-width: 1024px) {
@@ -1723,9 +1871,8 @@ html:not(.js) .nojs {
   }
 }
 
-/* The nav links stop fitting on one line here, and .nav-wrap neither wraps nor
-   scrolls — so below this width they pushed the whole document sideways rather
-   than overflowing their own bar. They collapse to the subnav, which scrolls. */
+/* Below this the nav could not fit its links on one line and pushed the whole
+   document sideways. The links collapse to the subnav, which scrolls. */
 @media (max-width: 960px) {
   .nav-links .nav-item {
     display: none;
@@ -1749,10 +1896,22 @@ html:not(.js) .nojs {
   input[type="search"], select {
     width: 100%;
   }
+  .band-card--map .leaflet-map-wrapper {
+    min-height: 300px;
+  }
+  /* The legend drops to its own row under the map title, and the button that
+     it used to push right goes back up beside the title. */
+  .map-legend {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .band-act {
+    margin-left: 0;
+  }
 }
 
-/* The donate button is the widest fixed element left in the bar; below this it
-   keeps its icon and drops the words rather than widening the document. */
+/* The donate button is the widest fixed element in the bar; below this it keeps
+   its icon and drops the words rather than widening the document. */
 @media (max-width: 480px) {
   .btn-donate-global span {
     display: none;
@@ -1764,6 +1923,9 @@ html:not(.js) .nojs {
     font-size: 1rem;
   }
   .brand-tag {
+    display: none;
+  }
+  .band-act span {
     display: none;
   }
 }

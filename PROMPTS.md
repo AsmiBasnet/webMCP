@@ -7,7 +7,9 @@ the satellite, and several of them end in a contradiction between two official s
 only shows up when you put them side by side.
 
 Nothing in the interface mentions any of this. The surface is `document.modelContext`, visible
-only to an agent or to DevTools.
+only to an agent or to DevTools. What you will see instead is the page moving: the five write tools
+drive the same filter bar, map and drill-down a person drives, and the map now sits at the top of
+the page where that is visible without scrolling.
 
 **Where to type them**
 
