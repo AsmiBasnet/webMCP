@@ -222,6 +222,7 @@ scripts/
   dash-test.mjs       six sources, day grouping, filters, drill-down, refresh, mid-session outage
   offline-test.mjs    every upstream dead before first byte — snapshot only
   webmcp-test.mjs     calls every tool through document.modelContext; asserts the page moved
+  shots.mjs           the same calls at seven viewport widths; asserts nothing overflows
 worker.js             Cloudflare proxy — required for Copernicus, optional for the rest
 ```
 
@@ -246,6 +247,7 @@ npm run serve       # http-server on :8787
 npm run test:dash      # six sources, day grouping, filters, drill-down, refresh, mid-session outage
 npm run test:offline   # every upstream dead before the first byte — snapshot only
 npm run test:webmcp    # every tool called through document.modelContext, and the DOM checked after
+npm run shots          # the same calls at seven widths, 360px to 1920px → shots/
 ```
 
 `test:dash` asserts the things that are easy to get quietly wrong: that all six sources contribute,
