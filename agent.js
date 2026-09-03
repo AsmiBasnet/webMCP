@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SankatSathi - Sandbox AI Agent & Gemini Integrator
+   Nepal Disaster Watch - Sandbox AI Agent & Gemini Integrator
    ========================================================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -71,7 +71,7 @@ function appendThinkingBubble() {
     const msg = document.createElement("div");
     msg.className = "chat-msg ai thinking-msg";
     msg.innerHTML = `
-        <div class="msg-sender">SankatSathi Agent</div>
+        <div class="msg-sender">Disaster Watch Agent</div>
         <div class="msg-text">
             <div class="thinking-bubble">
                 <span class="thinking-dot"></span>
@@ -104,7 +104,7 @@ async function runAgentInstruction(command) {
     } catch (err) {
         console.error("Agent error:", err);
         removeElement(thinking);
-        appendChatBubble("SankatSathi Agent", `<span class="text-red">Error during execution: ${err.message}</span>`, true);
+        appendChatBubble("Disaster Watch Agent", `<span class="text-red">Error during execution: ${err.message}</span>`, true);
     }
 }
 
@@ -120,7 +120,7 @@ async function runSimulatedAgent(command, thinkingBubble) {
     
     // Preset A: Auto Triage
     if (cmd.includes("triage") || cmd.includes("auto")) {
-        appendChatBubble("SankatSathi Agent", "Initiating crisis triage loop. Querying active alerts...", true);
+        appendChatBubble("Disaster Watch Agent", "Initiating crisis triage loop. Querying active alerts...", true);
         await sleep(1500);
 
         // Tool Call 1
@@ -128,12 +128,12 @@ async function runSimulatedAgent(command, thinkingBubble) {
         const pending = alertsRes.alerts;
 
         if (pending.length === 0) {
-            appendChatBubble("SankatSathi Agent", "Analyzed alerts: 0 unresolved SOS queues found. Action halted.", true);
+            appendChatBubble("Disaster Watch Agent", "Analyzed alerts: 0 unresolved SOS queues found. Action halted.", true);
             return;
         }
 
         // Triage prioritization
-        appendChatBubble("SankatSathi Agent", `Found ${pending.length} pending distress signals. Prioritizing critical alerts with children.`, true);
+        appendChatBubble("Disaster Watch Agent", `Found ${pending.length} pending distress signals. Prioritizing critical alerts with children.`, true);
         await sleep(1500);
 
         // Sorting by critical and children count
@@ -144,7 +144,7 @@ async function runSimulatedAgent(command, thinkingBubble) {
         });
 
         const targetAlert = prioritized[0];
-        appendChatBubble("SankatSathi Agent", `Selected target: <strong>${targetAlert.id}</strong> in <strong>${targetAlert.district}</strong> (${targetAlert.people} people, ${targetAlert.children} children). Checking depot capacities...`, true);
+        appendChatBubble("Disaster Watch Agent", `Selected target: <strong>${targetAlert.id}</strong> in <strong>${targetAlert.district}</strong> (${targetAlert.people} people, ${targetAlert.children} children). Checking depot capacities...`, true);
         await sleep(1500);
 
         // Tool Call 2
@@ -159,14 +159,14 @@ async function runSimulatedAgent(command, thinkingBubble) {
         }
 
         // Check route
-        appendChatBubble("SankatSathi Agent", `Assessing geographical transport routes from <strong>${selectedDepot}</strong> to ${targetAlert.district}...`, true);
+        appendChatBubble("Disaster Watch Agent", `Assessing geographical transport routes from <strong>${selectedDepot}</strong> to ${targetAlert.district}...`, true);
         await sleep(1500);
 
         // Tool Call 3
         const routeRes = await window.WebMCPRegistry.get_safest_route.execute({ center_id: selectedDepot, alert_id: targetAlert.id });
         const recommendedRoute = routeRes.routes.find(r => r.recommended) || routeRes.routes[0];
 
-        appendChatBubble("SankatSathi Agent", `Route check complete. Recommended Path: <strong>${recommendedRoute.name}</strong> (Flood hazard risk: ${recommendedRoute.flood_risk}). Initiating resource allocation...`, true);
+        appendChatBubble("Disaster Watch Agent", `Route check complete. Recommended Path: <strong>${recommendedRoute.name}</strong> (Flood hazard risk: ${recommendedRoute.flood_risk}). Initiating resource allocation...`, true);
         await sleep(1500);
 
         // Determine resources
@@ -189,16 +189,16 @@ async function runSimulatedAgent(command, thinkingBubble) {
             reason: `Dispatched ${neededBoats} boat(s) and squads from ${selectedDepot} to ${targetAlert.id} via ${recommendedRoute.name} because it is the unblocked route bypassing active river flood lines.`
         });
 
-        appendChatBubble("SankatSathi Agent", `<strong>Dispatch complete.</strong> Dispatched assets from ${selectedDepot} to ${targetAlert.id}. Route drawn on map.`, true);
+        appendChatBubble("Disaster Watch Agent", `<strong>Dispatch complete.</strong> Dispatched assets from ${selectedDepot} to ${targetAlert.id}. Route drawn on map.`, true);
     } 
     // Preset B: Medical Route Lalitpur
     else if (cmd.includes("lalitpur") || cmd.includes("medical")) {
-        appendChatBubble("SankatSathi Agent", "Querying Lalitpur alerts...", true);
+        appendChatBubble("Disaster Watch Agent", "Querying Lalitpur alerts...", true);
         await sleep(1200);
 
         const alert = State.sos_alerts.find(a => a.district === "Lalitpur" && a.status === "pending");
         if (!alert) {
-            appendChatBubble("SankatSathi Agent", "No pending Lalitpur SOS alerts found.", true);
+            appendChatBubble("Disaster Watch Agent", "No pending Lalitpur SOS alerts found.", true);
             return;
         }
 
@@ -207,7 +207,7 @@ async function runSimulatedAgent(command, thinkingBubble) {
         const routeRes = await window.WebMCPRegistry.get_safest_route.execute({ center_id: depot, alert_id: alert.id });
         const recommendedRoute = routeRes.routes.find(r => r.recommended) || routeRes.routes[0];
 
-        appendChatBubble("SankatSathi Agent", `Selected Route: ${recommendedRoute.name}. Dispatching medical unit...`, true);
+        appendChatBubble("Disaster Watch Agent", `Selected Route: ${recommendedRoute.name}. Dispatching medical unit...`, true);
         await sleep(1200);
 
         await window.WebMCPRegistry.dispatch_relief.execute({
@@ -224,11 +224,11 @@ async function runSimulatedAgent(command, thinkingBubble) {
             reason: `Dispatched 1 medical team from Kathmandu Depot to Lalitpur ${alert.id} using recommended route ${recommendedRoute.name}.`
         });
 
-        appendChatBubble("SankatSathi Agent", "Medical team dispatched successfully.", true);
+        appendChatBubble("Disaster Watch Agent", "Medical team dispatched successfully.", true);
     } 
     // Preset C: Evacuation warning broadcasts
     else if (cmd.includes("broadcast") || cmd.includes("warning") || cmd.includes("evacuation")) {
-        appendChatBubble("SankatSathi Agent", "Scanning map for high flood risk districts...", true);
+        appendChatBubble("Disaster Watch Agent", "Scanning map for high flood risk districts...", true);
         await sleep(1500);
 
         // Find districts with high risk
@@ -237,11 +237,11 @@ async function runSimulatedAgent(command, thinkingBubble) {
             .map(([name]) => name);
 
         if (highRiskDistricts.length === 0) {
-            appendChatBubble("SankatSathi Agent", "No districts currently in Warning/Critical state. Broadcast cancelled.", true);
+            appendChatBubble("Disaster Watch Agent", "No districts currently in Warning/Critical state. Broadcast cancelled.", true);
             return;
         }
 
-        appendChatBubble("SankatSathi Agent", `Found risk zones: ${highRiskDistricts.join(", ")}. Transmitting emergency alerts...`, true);
+        appendChatBubble("Disaster Watch Agent", `Found risk zones: ${highRiskDistricts.join(", ")}. Transmitting emergency alerts...`, true);
         
         for (const dist of highRiskDistricts) {
             await sleep(1000);
@@ -252,11 +252,11 @@ async function runSimulatedAgent(command, thinkingBubble) {
             });
         }
 
-        appendChatBubble("SankatSathi Agent", `Emergency broadcasts successfully sent to: ${highRiskDistricts.join(", ")}.`, true);
+        appendChatBubble("Disaster Watch Agent", `Emergency broadcasts successfully sent to: ${highRiskDistricts.join(", ")}.`, true);
     } 
     // Default fallback
     else {
-        appendChatBubble("SankatSathi Agent", "I received your command. However, in Simulation Mode, please use one of the preset quick task buttons above. Enter your Gemini API Key in Settings to enable open-ended natural language control.", true);
+        appendChatBubble("Disaster Watch Agent", "I received your command. However, in Simulation Mode, please use one of the preset quick task buttons above. Enter your Gemini API Key in Settings to enable open-ended natural language control.", true);
     }
 }
 
@@ -346,7 +346,7 @@ async function runLiveGeminiAgent(command, apiKey, thinkingBubble) {
             role: "user",
             parts: [
                 {
-                    text: `You are the SankatSathi Disaster Response Co-pilot, operating an emergency command center for Nepal Floods.
+                    text: `You are the Nepal Disaster Watch Response Co-pilot, operating an emergency command center for Nepal Floods.
                     You have direct control of this page using the provided WebMCP tools.
                     
                     CRITICAL INSTRUCTION:
@@ -417,7 +417,7 @@ async function runLiveGeminiAgent(command, apiKey, thinkingBubble) {
                 // Gemini responded with normal text, meaning the tool loop is complete
                 removeElement(thinkingBubble);
                 const replyText = content.parts[0].text;
-                appendChatBubble("SankatSathi Agent", replyText, true);
+                appendChatBubble("Disaster Watch Agent", replyText, true);
                 loopActive = false;
             }
         } else {
@@ -427,7 +427,7 @@ async function runLiveGeminiAgent(command, apiKey, thinkingBubble) {
 
     if (iterations >= maxIterations) {
         removeElement(thinkingBubble);
-        appendChatBubble("SankatSathi Agent", "AI operation loop exceeded maximum step limits. Action suspended.", true);
+        appendChatBubble("Disaster Watch Agent", "AI operation loop exceeded maximum step limits. Action suspended.", true);
     }
 }
 

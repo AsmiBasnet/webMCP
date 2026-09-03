@@ -1,6 +1,6 @@
-# SankatSathi — Real Data & Doctrine Brief
+# Nepal Disaster Watch — Real Data & Doctrine Brief
 
-**Purpose:** replace SankatSathi's simulated SOS/resource/water-level data with real, live, citable sources, and align the six WebMCP tool schemas with the standards real emergency responders actually use.
+**Purpose:** connect to real, live, citable sources, and align the WebMCP tool schemas with the standards real emergency responders actually use.
 
 **Verified:** 30 August 2026. Every endpoint marked ✅ below was fetched live during this research and returned real data. Endpoints marked ⚠️ are documented but could not be confirmed from the research sandbox (likely WAF/bot filtering, not an outage).
 
@@ -77,7 +77,7 @@ Its wire format is **Cursor on Target (CoT)** — terse XML built for tactical r
 
 `type` is hierarchical dot-notation (`a-f-G-U-C` = friendly ground unit), and `stale` is a hard expiry time — a position that isn't refreshed *disappears*. That staleness concept is worth stealing for your dispatch markers.
 
-Web apps can and do speak CoT: **CloudTAK** (Node/TS) exposes a REST API for CoT injection plus a browser map client; **FreeTAKServer** (Python) and **OpenTAKServer** are open-source servers. A credible line in your submission: *"dispatch markers are emitted as Cursor-on-Target events, so SankatSathi can federate into an ATAK/WinTAK common operating picture."*
+Web apps can and do speak CoT: **CloudTAK** (Node/TS) exposes a REST API for CoT injection plus a browser map client; **FreeTAKServer** (Python) and **OpenTAKServer** are open-source servers. A credible line in your submission: *"dispatch markers are emitted as Cursor-on-Target events, so Nepal Disaster Watch can federate into an ATAK/WinTAK common operating picture."*
 
 ### 1.3 WebEOC (Juvare)
 

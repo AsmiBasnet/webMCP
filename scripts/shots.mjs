@@ -64,7 +64,7 @@ for (const size of SIZES) {
 
   await p.goto(BASE + QUERY, { waitUntil: "networkidle", timeout: 60000 });
   await p.waitForFunction(() => document.querySelectorAll("#rows .row").length > 0, { timeout: 60000 });
-  await p.waitForFunction(() => window.SankatSathi?.webmcp, { timeout: 30000 });
+  await p.waitForFunction(() => window.NepalDisasterWatch?.webmcp, { timeout: 30000 });
 
   for (const step of STEPS) {
     for (const [name, args] of step.calls) {

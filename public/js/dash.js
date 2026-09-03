@@ -168,11 +168,18 @@ function renderStatus(visible = null) {
     </div>`;
   }).join("");
 
+  const degradedNote = bad.size
+    ? `${bad.size} unreachable`
+    : stale.size
+      ? `${stale.size} snapshot fallback`
+      : null;
+
   el.innerHTML = `
     <div class="status-sources-grid">
       ${chips}
     </div>
     <div class="status-meta-group">
+      ${degradedNote ? `<span class="status-sync-pill status-sync-pill--warning"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(degradedNote)}</span>` : ""}
       <span class="status-sync-pill"><i class="fa-solid fa-arrows-rotate"></i> Updated ${esc(when)} · Auto ${REFRESH_MS / 60_000}m</span>
     </div>
   `;
@@ -810,13 +817,13 @@ async function boot() {
   // the interface by design — the evidence is in the console and in
   // `document.modelContext.getTools()`.
   installWebMCP(controls)
-    .then((r) => { window.SankatSathi.webmcp = r; })
+    .then((r) => { window.NepalDisasterWatch.webmcp = r; })
     // Registration can fail outside the per-tool guard — an extension or a
     // polyfill may have already defined document.modelContext non-configurably.
     // Unhandled, that leaves no tools and no explanation, which is the worst of
     // the three outcomes.
     .catch((err) => {
-      window.SankatSathi.webmcp = { registered: [], error: String(err?.message ?? err), native: false };
+      window.NepalDisasterWatch.webmcp = { registered: [], error: String(err?.message ?? err), native: false };
       console.error("[WebMCP] tool registration failed; this page has no tool surface.", err);
     });
 
@@ -824,8 +831,7 @@ async function boot() {
   setInterval(() => renderStatus(applyFilters(state.records, { days: state.filters.days })), TICK_MS);
 }
 
-boot();
-
 // For the console and for tests.
-window.SankatSathi = { state, refresh, loadFeed, applyFilters, controls };
-window.NepalDisasterWatch = window.SankatSathi;
+window.NepalDisasterWatch = { state, refresh, loadFeed, applyFilters, controls };
+
+boot();

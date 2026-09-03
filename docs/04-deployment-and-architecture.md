@@ -58,7 +58,7 @@ export default {
 
     const upstream = await fetch(t.toString(), {
       headers: {
-        "User-Agent": "SankatSathi/1.0 (+https://sankatsathi.pages.dev; contact: you@example.com)",
+        "User-Agent": "NepalDisasterWatch/1.0 (+https://nepal-disaster-watch.pages.dev; contact: you@example.com)",
         "Accept": "application/json",
       },
       cf: { cacheTtl: 120, cacheEverything: true },
@@ -84,7 +84,7 @@ function cors() {
 }
 ```
 
-Deploy: `npx wrangler deploy worker.js --name sankatsathi-proxy`
+Deploy: `npx wrangler deploy worker.js --name nepal-disaster-watch-proxy`
 
 **The allowlist is not optional.** An open `?url=` proxy will be found and abused within days — it becomes someone else's free anonymiser and gets your account suspended.
 
@@ -95,7 +95,7 @@ Vercel Edge Function equivalent is the same body with `export const config = { r
 ### Client-side pattern
 
 ```js
-const PROXY = "https://sankatsathi-proxy.<you>.workers.dev/?url=";
+const PROXY = "https://nepal-disaster-watch-proxy.<you>.workers.dev/?url=";
 const DIRECT = new Set(["flood-api.open-meteo.com", "overpass-api.de"]);
 
 async function api(url) {
@@ -242,10 +242,10 @@ Cloudflare Pages is the natural fit given the Worker.
 
 ```bash
 # static site
-npx wrangler pages deploy ./public --project-name sankatsathi
+npx wrangler pages deploy ./public --project-name nepal-disaster-watch
 
 # proxy
-npx wrangler deploy worker.js --name sankatsathi-proxy
+npx wrangler deploy worker.js --name nepal-disaster-watch-proxy
 ```
 
 Vercel or Netlify work equally well — drop the Worker for `api/proxy.js` (Vercel Edge) or `netlify/functions/proxy.js`.

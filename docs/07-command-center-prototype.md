@@ -1,28 +1,26 @@
-> **This is the README of the command-centre prototype**, preserved verbatim when the two
-> implementations of SankatSathi were merged into one repository. Its code is the five files at
-> the repository root — `index.html`, `app.js`, `agent.js`, `webmcp.js`, `style.css`. The live
-> data view described in the top-level [`README.md`](../README.md) is a separate implementation
-> under `public/`. Nothing below has been edited.
+> **This is the README of the early command-centre prototype**.
+> Its code is the five files at the repository root — `index.html`, `app.js`, `agent.js`, `webmcp.js`, `style.css`.
+> The active live telemetry platform described in the top-level [`README.md`](../README.md) is under `public/`.
 
 ---
 
-# 🌊 SankatSathi (संकट साथी - Crisis Companion)
+# 🌊 Nepal Disaster Watch · नेपाल विपद् वाच
 ### WebMCP-Enabled Flood Response Command Center for Nepal
 
 > **Submission for the WebMCP Devpost Challenge (2026)**
-> *“SankatSathi turns a disaster-response website into an agent-operable emergency command center.”*
+> *“Nepal Disaster Watch turns a disaster-response website into an agent-operable emergency command center.”*
 
 ---
 
 ## 📌 Project Overview
 
-**SankatSathi** is an interactive crisis command center designed to orchestrate emergency flood response in Nepal (focusing on the Koshi, Bagmati, and Terai regions). The web application provides a real-time view of:
+**Nepal Disaster Watch** is an interactive crisis command center designed to orchestrate emergency flood response in Nepal (focusing on the Koshi, Bagmati, and Terai regions). The web application provides a real-time view of:
 - **Stranded Citizen SOS Alerts**: Live distress signals (location, urgency, children, elderly, water levels).
 - **Relief Resource Inventories**: regional rescue depots containing boats, medical squads, and food packs.
 - **Interactive Risk Map**: Visualization of flood water levels, road blocks, and live dispatch routes.
 
 ### The WebMCP Moment 🤖
-Instead of an AI agent just scraping the DOM or visually describing the layout, **SankatSathi exposes client-side imperative WebMCP tools** via `document.modelContext.registerTool()`. 
+Instead of an AI agent just scraping the DOM or visually describing the layout, **Nepal Disaster Watch exposes client-side imperative WebMCP tools** via `document.modelContext.registerTool()`. 
 
 Through WebMCP, an agent can:
 1. Fetch live SOS queues.
@@ -38,7 +36,7 @@ This enables a true **human-agent collaborative workflow** where the agent acts 
 
 ## 🛠️ WebMCP Tool Specifications
 
-SankatSathi registers six custom tools on `document.modelContext`:
+Nepal Disaster Watch registers custom tools on `document.modelContext`:
 
 ### 1. `get_active_sos_alerts`
 Exposes the queue of unresolved distress signals.

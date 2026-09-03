@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SankatSathi - Core Dashboard Application State & Logic
+   Nepal Disaster Watch - Core Dashboard Application State & Logic
    ========================================================================== */
 
 // --- Global Command Center State ---

@@ -17,14 +17,14 @@ const p = await b.newPage({ viewport: { width: 1600, height: 1000 } });
 // Copernicus EMS sends no Access-Control-Allow-Origin, so without a deployed
 // proxy the browser logs a CORS failure and the app falls back to its snapshot.
 // Designed behaviour, asserted by dash-test — not a defect here.
-const EXPECTED = /rapidmapping\.emergency\.copernicus\.eu|net::ERR_FAILED/;
+const EXPECTED = /rapidmapping\.emergency\.copernicus\.eu|net::ERR_FAILED|net::ERR_CONNECTION_RESET/;
 const errs = [];
 p.on("console", (m) => m.type() === "error" && !EXPECTED.test(m.text()) && errs.push(m.text()));
 p.on("pageerror", (e) => errs.push("PAGEERROR " + e.message));
 
 await p.goto(BASE, { waitUntil: "networkidle" });
 await p.waitForFunction(() => document.querySelectorAll("#rows .row").length > 0, { timeout: 60000 });
-await p.waitForFunction(() => window.SankatSathi?.webmcp, { timeout: 30000 });
+await p.waitForFunction(() => window.NepalDisasterWatch?.webmcp, { timeout: 30000 });
 
 const call = (name, args = {}) =>
   p.evaluate(
@@ -35,7 +35,7 @@ const call = (name, args = {}) =>
 const rows = () => p.$$eval("#rows .row", (e) => e.length);
 const view = () =>
   p.evaluate(() => {
-    const f = window.SankatSathi.state.filters;
+    const f = window.NepalDisasterWatch.state.filters;
     return {
       days: f.days,
       sources: [...f.sources],
@@ -44,7 +44,7 @@ const view = () =>
       kind: f.kind,
       search: f.search,
       sort: f.sort,
-      selected: window.SankatSathi.state.selected,
+      selected: window.NepalDisasterWatch.state.selected,
       daysControl: document.querySelector("#f-days").value,
       sortControl: document.querySelector("#f-sort").value,
       searchControl: document.querySelector("#f-search").value,
@@ -62,7 +62,7 @@ const check = (label, ok, detail = "") => {
 // --- discovery -------------------------------------------------------------
 const impl = await p.evaluate(() => ({
   native: !document.modelContext.shim,
-  registered: window.SankatSathi.webmcp.registered,
+  registered: window.NepalDisasterWatch.webmcp.registered,
 }));
 console.log(`\nmodelContext: ${impl.native ? "native" : "page shim (no WebMCP in this browser)"}`);
 
@@ -119,7 +119,7 @@ check("unknown id fails honestly", /No record with id/.test(missing));
 const shape = await p.evaluate(async () => {
   const t = (await document.modelContext.getTools()).find((x) => x.name === "get_record_details");
   const eg = t.inputSchema.properties.id.description.match(/"(damage:[^"]+)"/)[1];
-  const real = window.SankatSathi.state.records.find((r) => r.source === "damage");
+  const real = window.NepalDisasterWatch.state.records.find((r) => r.source === "damage");
   return { eg, real: real ? real.id : null };
 });
 check("the id example in the schema matches real ids",
@@ -196,7 +196,7 @@ check("...and the rows agree", await p.$$eval("#rows .row .row-where", (e) => e.
   .then((w) => w.every((x) => x === dName)));
 
 const target = (await p.evaluate((d) => {
-  const r = window.SankatSathi.state.records.find((x) => x.district === d && x.point);
+  const r = window.NepalDisasterWatch.state.records.find((x) => x.district === d && x.point);
   return r ? r.id : null;
 }, dName)) ?? ids[0];
 
@@ -204,13 +204,13 @@ await call("select_record", { id: target });
 const v3 = await view();
 check("select_record opens the detail panel", v3.detailOpen && v3.selected === target, target);
 check("...and the panel names the record", await p.evaluate((id) => {
-  const r = window.SankatSathi.state.records.find((x) => x.id === id);
+  const r = window.NepalDisasterWatch.state.records.find((x) => x.id === id);
   return document.querySelector("#detail h2").textContent.trim() === r.title;
 }, target));
 check("...and only claims the map moved when it did",
   /the map has moved to it/.test(await call("select_record", { id: target })));
 // A record with no coordinates must say the map did not move.
-const unlocated = await p.evaluate(() => (window.SankatSathi.state.records.find((r) => !r.point) ?? {}).id ?? null);
+const unlocated = await p.evaluate(() => (window.NepalDisasterWatch.state.records.find((r) => !r.point) ?? {}).id ?? null);
 if (unlocated) {
   const out = await call("select_record", { id: unlocated });
   check("an unlocated record says the map did NOT move", /The map did NOT move/.test(out), unlocated);

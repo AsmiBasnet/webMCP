@@ -1,5 +1,5 @@
 {
-  "name": "sankatsathi",
+  "name": "nepal-disaster-watch",
   "version": "1.0.0",
   "private": true,
   "description": "A WebMCP interface to Nepal's public disaster record.",
@@ -12,8 +12,8 @@
     "test:dash": "node scripts/dash-test.mjs",
     "test:offline": "node scripts/offline-test.mjs",
     "test:webmcp": "node scripts/webmcp-test.mjs",
-    "deploy": "npx wrangler pages deploy ./public --project-name sankatsathi",
-    "deploy:proxy": "npx wrangler deploy worker.js --name sankatsathi-proxy",
+    "deploy": "npx wrangler pages deploy ./public --project-name nepal-disaster-watch",
+    "deploy:proxy": "npx wrangler deploy worker.js --name nepal-disaster-watch-proxy",
     "shots": "node scripts/shots.mjs"
   },
   "devDependencies": {

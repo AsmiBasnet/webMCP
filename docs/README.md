@@ -1,8 +1,8 @@
-# SankatSathi — Documentation
+# Nepal Disaster Watch — Documentation
 
-Research and design docs for **SankatSathi** (संकट साथी), a WebMCP-enabled interface to Nepal's public disaster record.
+Research and design docs for **Nepal Disaster Watch** (नेपाल विपद् वाच), a WebMCP-enabled interface to Nepal's public disaster record.
 
-> **BIPAD collects it. SankatSathi makes it answerable.**
+> **BIPAD collects it. Nepal Disaster Watch makes it answerable.**
 
 Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Devpost, 2026).
 
@@ -23,7 +23,7 @@ Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Dev
 
 ## The one-paragraph version
 
-Nepal has already solved disaster data *collection*. NDRRMA's BIPAD platform holds 60,000+ verified incident records going back to April 2015 — each with casualty breakdowns by sex and disability — alongside river gauges reporting every ten minutes against warning and danger thresholds, and a live national roadblock feed with repair ETAs and households cut off. It is open, free, and effectively unusable: a fixed dashboard over an undocumented API with no aggregation endpoint, meaning the country's own disaster record cannot be summarised without writing a scraper. SankatSathi registers WebMCP tools over that data so an agent can interrogate eleven years of it in one sentence — including the questions that find *absences*, like which municipalities have flood incidents but no registered evacuation centre. Every answer ends in something the person can actually do: map the gap through the HOT campaign NDRRMA and HOT launched for this flood, watch a gauge, call the road engineer, donate to a verified channel.
+Nepal has already solved disaster data *collection*. NDRRMA's BIPAD platform holds 60,000+ verified incident records going back to April 2015 — each with casualty breakdowns by sex and disability — alongside river gauges reporting every ten minutes against warning and danger thresholds, and a live national roadblock feed with repair ETAs and households cut off. It is open, free, and effectively unusable: a fixed dashboard over an undocumented API with no aggregation endpoint, meaning the country's own disaster record cannot be summarised without writing a scraper. Nepal Disaster Watch registers WebMCP tools over that data so an agent can interrogate eleven years of it in one sentence — including the questions that find *absences*, like which municipalities have flood incidents but no registered evacuation centre. Every answer ends in something the person can actually do: map the gap through the HOT campaign NDRRMA and HOT launched for this flood, watch a gauge, call the road engineer, donate to a verified channel.
 
 It issues no orders and sends no alerts. It has no authority to.
 
@@ -74,6 +74,6 @@ level/threshold ratio is meaningless. Compare headroom in metres.
 
 This project displays data from Nepal government sources that publish **no stated licence** — BIPAD/NDRRMA, DHM, and the Department of Roads. That data is shown with attribution for informational purposes and is not redistributed. See [05-credits-and-licences.md](05-credits-and-licences.md) for the full breakdown and the required credit block.
 
-SankatSathi is an independent project. It is not affiliated with, endorsed by, or operated by NDRRMA, DHM, DoR or the Government of Nepal, and it is not an official warning service.
+Nepal Disaster Watch is an independent project. It is not affiliated with, endorsed by, or operated by NDRRMA, DHM, DoR or the Government of Nepal, and it is not an official warning service.
 
 **Emergencies in Nepal:** 100 Police · 102 Ambulance · 1149 National Emergency Operation Centre

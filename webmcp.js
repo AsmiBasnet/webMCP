@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SankatSathi - WebMCP Tool Registry & Bridge Layer
+   Nepal Disaster Watch - WebMCP Tool Registry & Bridge Layer
    ========================================================================== */
 
 // Local registry so that the embedded local sandbox agent can inspect 

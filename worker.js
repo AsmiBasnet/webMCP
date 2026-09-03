@@ -1,6 +1,6 @@
 // Optional Cloudflare Worker proxy.
 //
-//   npx wrangler deploy worker.js --name sankatsathi-proxy
+//   npx wrangler deploy worker.js --name nepal-disaster-watch-proxy
 //   then set PROXY in public/js/config.js to https://<name>.<you>.workers.dev/?url=
 //
 // REQUIRED for one source, optional for the rest. BIPAD, GDACS and Open-Meteo
@@ -58,7 +58,7 @@ export default {
     try {
       upstream = await fetch(t.toString(), {
         headers: {
-          "User-Agent": "SankatSathi/1.0 (+https://sankatsathi.pages.dev)",
+          "User-Agent": "NepalDisasterWatch/1.0 (+https://nepal-disaster-watch.pages.dev)",
           Accept: request.headers.get("Accept") ?? "application/json",
         },
         cf: { cacheTtl: 120, cacheEverything: true },

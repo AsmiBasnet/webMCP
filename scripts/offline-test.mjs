@@ -32,7 +32,7 @@ await p.waitForFunction(
 const rows = await p.$$eval("#rows .row", (e) => e.length);
 const perSource = await p.evaluate(() =>
   Object.fromEntries(["incident", "river", "road", "alert", "forecast", "damage"].map((s) =>
-    [s, window.SankatSathi.state.records.filter((r) => r.source === s).length])));
+    [s, window.NepalDisasterWatch.state.records.filter((r) => r.source === s).length])));
 
 console.log("records from snapshot:", rows);
 console.log("per source:", perSource);

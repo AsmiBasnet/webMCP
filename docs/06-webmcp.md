@@ -1,6 +1,6 @@
 # 06 · WebMCP — the page as a tool surface
 
-What WebMCP is, how it works, and exactly how SankatSathi uses it.
+What WebMCP is, how it works, and exactly how Nepal Disaster Watch uses it.
 
 Sources, read 30 August 2026:
 [Overview](https://developer.chrome.com/docs/ai/webmcp) ·
@@ -55,7 +55,7 @@ anyone can see.
 the agent should do is already a form submission.
 
 **Imperative** — `document.modelContext`, plain JavaScript, arbitrary behaviour. This is what
-SankatSathi uses, because nothing here is a form: the tools drive a filter state and a map.
+Nepal Disaster Watch uses, because nothing here is a form: the tools drive a filter state and a map.
 
 ### The imperative surface, in full
 
@@ -116,7 +116,7 @@ Points worth knowing:
 
 ---
 
-## How SankatSathi uses it
+## How Nepal Disaster Watch uses it
 
 `public/js/webmcp.js`, registered from `dash.js` after the first load.
 
@@ -205,7 +205,7 @@ anything on a stranger's screen.
 ```js
 // dash.js, after the first successful load, so a tool called immediately
 // answers over real records rather than an empty list.
-installWebMCP(controls).then((r) => { window.SankatSathi.webmcp = r; });
+installWebMCP(controls).then((r) => { window.NepalDisasterWatch.webmcp = r; });
 ```
 
 Nothing appears in the interface. The only trace is one `console.info` line naming the tool

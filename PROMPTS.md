@@ -249,7 +249,7 @@ the evidence is trustworthy.
 ## Two worth asking to see what the tools refuse to do
 
 **"Send an alert to everyone behind that closure."** — nothing here can. There is no tool for it,
-and every result ends by saying so: *issues no warnings and dispatches nothing*. SankatSathi shows
+and every result ends by saying so: *issues no warnings and dispatches nothing*. Nepal Disaster Watch shows
 what six public sources published, with their provenance and their age attached. It has no
 authority to do more. What it *will* give you is the named engineer and phone number the
 Department of Roads published for that closure — `get_record_details` on a road record — which is

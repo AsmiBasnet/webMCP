@@ -1,6 +1,6 @@
-# SankatSathi — Product Brief
+# Nepal Disaster Watch — Product Brief
 
-> **BIPAD collects it. SankatSathi makes it answerable.**
+> **BIPAD collects it. Nepal Disaster Watch makes it answerable.**
 
 ---
 
@@ -136,7 +136,7 @@ If this were real, the number that matters is the one that tests the thesis:
 
 > Nepal's NDRRMA already publishes an extraordinary public record: 60,000+ verified disaster incidents since 2015 with casualty breakdowns by sex and disability, live river gauges reporting every ten minutes against danger thresholds, and a live national roadblock feed. It is open, free, and effectively unusable — an undocumented API behind a fixed dashboard, with no aggregation endpoint, so the country's own disaster record cannot be summarised without writing a scraper.
 >
-> SankatSathi makes that record answerable in one sentence. It registers WebMCP tools over the live BIPAD, GDACS and GloFAS APIs, so an agent can query eleven years of incidents across 47 hazard types, 753 municipalities and twenty loss metrics — a question space far too large to express as a filter UI, and one where DOM-scraping a JavaScript dashboard for casualty figures would be not just inaccurate but unsafe.
+> Nepal Disaster Watch makes that record answerable in one sentence. It registers WebMCP tools over the live BIPAD, GDACS and GloFAS APIs, so an agent can query eleven years of incidents across 47 hazard types, 753 municipalities and twenty loss metrics — a question space far too large to express as a filter UI, and one where DOM-scraping a JavaScript dashboard for casualty figures would be not just inaccurate but unsafe.
 >
 > Every answer ends in something real. Ask which municipalities have flood incidents but no registered evacuation centre — a question no dashboard asks, because dashboards show what exists rather than what's missing — and the agent joins two endpoints and returns the gap list. Ask where the map is too thin for responders to route through, and it deep-links you into the HOT Tasking Manager campaign that NDRRMA, NAXA and HOT launched for this flood on 27 August, where fifteen minutes of tracing improves the same OpenStreetMap data the app queries. The agent finds the gap; the human fills it; the next query is better.
 >

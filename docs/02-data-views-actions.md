@@ -1,4 +1,4 @@
-# SankatSathi v2 — Data · Views · Actions
+# Nepal Disaster Watch — Data · Views · Actions
 
 **The reframe:** stop simulating a government command centre nobody gave you authority to run. Build the thing that doesn't exist yet — **a queryable public interface to Nepal's real disaster data, where every query ends in something the person can actually do.**
 

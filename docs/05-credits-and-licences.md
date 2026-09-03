@@ -1,6 +1,6 @@
 # Credits & Licences
 
-Every source SankatSathi uses, with its licence and the exact attribution wording to display. Paste these verbatim — several are legally required, and two of them require care because **no licence is stated at all**.
+Every source Nepal Disaster Watch uses, with its licence and the exact attribution wording to display. Paste these verbatim — several are legally required, and two of them require care because **no licence is stated at all**.
 
 Verified 30 August 2026.
 
@@ -41,7 +41,7 @@ This is the minimum that must be visible on the deployed site. It is not optiona
       with NAXA and NDRRMA.</li>
     <li>Built with <a href="https://leafletjs.com/">Leaflet</a> (BSD-2-Clause).</li>
   </ul>
-  <p class="disclaimer">SankatSathi is an independent project. It is not
+  <p class="disclaimer">Nepal Disaster Watch is an independent project. It is not
   affiliated with, endorsed by, or operated by NDRRMA, DHM, DoR or the
   Government of Nepal. It is not an official warning service. For emergencies
   in Nepal call <strong>100</strong> (Police), <strong>102</strong> (Ambulance)

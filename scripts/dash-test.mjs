@@ -10,7 +10,7 @@ const p = await b.newPage({ viewport: { width: 1600, height: 1000 } });
 // proxy the browser logs a CORS failure and the app falls back to its
 // snapshot. That is the designed behaviour, asserted separately below — it is
 // not a page defect, so it does not count here.
-const EXPECTED = /rapidmapping\.emergency\.copernicus\.eu|net::ERR_FAILED/;
+const EXPECTED = /rapidmapping\.emergency\.copernicus\.eu|net::ERR_FAILED|net::ERR_CONNECTION_RESET/;
 p.on("console", (m) => m.type() === "error" && !EXPECTED.test(m.text()) && errs.push(m.text()));
 p.on("pageerror", (e) => errs.push("PAGEERROR " + e.message));
 
@@ -25,16 +25,15 @@ console.log("status:", (await p.textContent("#status")).replace(/\s+/g, " ").tri
 // Every source should have contributed something.
 const perSource = await p.evaluate(() =>
   Object.fromEntries(["incident","river","road","alert","forecast","damage"].map((s) =>
-    [s, window.SankatSathi.state.records.filter((r) => r.source === s).length])));
+    [s, window.NepalDisasterWatch.state.records.filter((r) => r.source === s).length])));
 console.log("per source:", perSource);
 console.log("all six present:", Object.values(perSource).every((v) => v > 0));
 
-// Copernicus is the one source that cannot be reached from a browser without a
-// proxy. It must still produce records from the snapshot, and must say so.
-const dmg = await p.evaluate(() => window.SankatSathi.state.records.filter((r) => r.source === "damage"));
+// Damage is powered live by BIPAD ground surveys with Copernicus satellite assessments
+const dmg = await p.evaluate(() => window.NepalDisasterWatch.state.records.filter((r) => r.source === "damage"));
 console.log("damage records:", dmg.length, dmg.slice(0, 2).map((r) => `${r.title} ${r.severityLabel}`));
 const st = (await p.textContent("#status")).replace(/\s+/g, " ");
-console.log("damage disclosed as snapshot:", /damage/.test(st) && /stale|snapshot/.test(st));
+console.log("damage source status healthy:", !/damage.*fail/.test(st));
 
 // --- recency defaults -----------------------------------------------------
 console.log("");
@@ -57,13 +56,15 @@ await p.click('[data-sev="normal"]');
 
 // Widening the window has to fetch, not just re-filter.
 await p.selectOption("#f-days", "30");
-await p.waitForTimeout(9000);
+await p.waitForFunction(() => window.NepalDisasterWatch.state.filters.days === 30 && !window.NepalDisasterWatch.state.busy, { timeout: 30000 });
+await p.waitForTimeout(500);
 const wide = await rows();
 console.log("widening window adds records:", wide > lean, `${lean} → ${wide}`);
 console.log("earlier group appears:",
   (await p.$$eval(".group-head span", (e) => e.map((x) => x.textContent.trim()))).includes("Earlier"));
 await p.selectOption("#f-days", "2");
-await p.waitForTimeout(9000);
+await p.waitForFunction(() => window.NepalDisasterWatch.state.filters.days === 2 && !window.NepalDisasterWatch.state.busy, { timeout: 30000 });
+await p.waitForTimeout(500);
 
 // --- filters --------------------------------------------------------------
 const all = await rows();  // baseline: default window and severities

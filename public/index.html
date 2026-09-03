@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nepal Disaster Watch — WebMCP Multi-Source Emergency Dashboard</title>
-<meta name="description" content="Live Nepal disaster records from BIPAD, DHM river gauges, Department of Roads, GDACS alerts, GloFAS forecasts and Copernicus EMS satellite assessment. Powered by WebMCP native tools.">
+<title>Nepal Disaster Watch | WebMCP Emergency Intelligence Platform</title>
+<meta name="description" content="Nepal Disaster Watch normalises six public data sources with live status and snapshot provenance. WebMCP lets agents query, cross-reference, and inspect district disaster gaps alongside human responders.">
 
 <!-- Google Fonts for Devpost Typography -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,13 +53,12 @@
       </div>
       <h1 class="hero-title">Nepal Disaster Watch <span class="nepali-text">नेपाल विपद् वाच</span></h1>
       <p class="hero-desc">
-        Six live public sources normalised into one unified, filterable record type with 11 native WebMCP tools. Real-time river gauges, NDRRMA disaster incidents, roadblock closures, international alerts, discharge forecasts, and satellite damage assessments.
+        Six public data sources, with live status and snapshot provenance, normalised into one unified, filterable record type with 11 native WebMCP tools. People and agents investigate what is happening in a district together without guessing through UI controls or silently misreading stale data.
       </p>
       
       <div class="hero-actions">
         <a href="#feed-section" class="btn-hero-primary"><i class="fa-solid fa-bolt"></i> Explore Live Feed</a>
         <a href="https://pmdrf.nchl.com.np/" target="_blank" rel="noopener" class="btn-hero-donate"><i class="fa-solid fa-heart"></i> Prime Minister Relief Fund</a>
-        <a href="/" class="btn-hero-secondary"><i class="fa-solid fa-sliders"></i> Command Prototype</a>
       </div>
     </div>
 
@@ -360,22 +359,22 @@
         </tr>
         <tr>
           <td>
-            <strong><i class="fa-solid fa-satellite" style="color: #8b5cf6;"></i> Damage Assessment</strong>
-            <div class="source-sub">Orbital building grading</div>
+            <strong><i class="fa-solid fa-house-chimney-crack" style="color: #8b5cf6;"></i> Damage & Loss</strong>
+            <div class="source-sub">Ground surveys & satellite grading</div>
           </td>
           <td>
-            <a href="https://rapidmapping.emergency.copernicus.eu/" target="_blank" rel="noopener" class="source-agency-link">
-              Copernicus EMS Rapid Mapping <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <a href="https://bipadportal.gov.np/" target="_blank" rel="noopener" class="source-agency-link">
+              NDRRMA & Copernicus EMS <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </a>
-            <div class="agency-sub">European Union Space Programme (Activation <a href="https://rapidmapping.emergency.copernicus.eu/EMSR927" target="_blank" rel="noopener">EMSR927</a>)</div>
+            <div class="agency-sub">Government of Nepal (<a href="https://bipadportal.gov.np" target="_blank" rel="noopener">BIPAD</a>) & EU Space Programme (<a href="https://rapidmapping.emergency.copernicus.eu/" target="_blank" rel="noopener">Copernicus EMS</a>)</div>
           </td>
           <td>
-            <a href="https://rapidmapping.emergency.copernicus.eu/backend/dashboard-api/public-activations-info/?country=Nepal" target="_blank" rel="noopener" class="endpoint-badge">
-              <code>/dashboard-api/public-activations/</code> <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <a href="https://bipadportal.gov.np/api/v1/incident/?expand=loss" target="_blank" rel="noopener" class="endpoint-badge">
+              <code>/api/v1/incident/?expand=loss</code> <i class="fa-solid fa-arrow-up-right-from-square"></i>
             </a>
           </td>
-          <td>Per satellite pass</td>
-          <td>VHR Optical Orbital Satellite Survey</td>
+          <td>Continuous field surveys & satellite passes</td>
+          <td>NDRRMA Loss Surveys & VHR Satellite Assessment</td>
         </tr>
       </tbody>
     </table>
@@ -385,7 +384,7 @@
         <i class="fa-solid fa-scale-balanced"></i> <strong>Open Data Attribution & Citation Standards</strong>
       </div>
       <p>
-        Data utilized in this platform is sourced from official public domain registries and open-access scientific services. All incident and telemetry data is attributed to the respective Government of Nepal authorities (NDRRMA, DHM, DoR via BIPAD Portal under open government data guidelines). Global multi-hazard alerts are credited to UN OCHA / EC JRC GDACS. River discharge forecasts are produced by Copernicus GloFAS via Open-Meteo (licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>). Satellite damage assessments are provided by the European Union Copernicus Emergency Management Service under the <a href="https://copernicus.eu/en/access-data/copyright-and-licenses" target="_blank" rel="noopener">Copernicus Open Access Policy</a>.
+        Data utilized in this platform is sourced from official public domain registries and open-access scientific services. All disaster incidents, ground damage & loss surveys, river hydrology, and road status are attributed to the respective Government of Nepal authorities (NDRRMA, DHM, DoR via BIPAD Portal under open government data guidelines). Global multi-hazard alerts are credited to UN OCHA / EC JRC GDACS and NDRRMA. River discharge forecasts are produced by Copernicus GloFAS via Open-Meteo (licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>). Satellite damage assessments are provided by the European Union Copernicus Emergency Management Service under the <a href="https://copernicus.eu/en/access-data/copyright-and-licenses" target="_blank" rel="noopener">Copernicus Open Access Policy</a>.
       </p>
     </div>
   </div>
