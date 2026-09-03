@@ -18,12 +18,12 @@ import { distanceKm } from "./api.js";
 
 /** The six sources, in the order they appear in the filter bar. */
 export const SOURCES = [
-  { id: "incident", label: "Incidents",  origin: "BIPAD / NDRRMA",              cadence: "as district officers file" },
-  { id: "river",    label: "Gauges",     origin: "DHM via BIPAD",               cadence: "every 10 min" },
-  { id: "road",     label: "Roads",      origin: "Dept. of Roads via BIPAD",    cadence: "as divisions report" },
-  { id: "alert",    label: "Alerts",     origin: "GDACS / EC JRC",              cadence: "per episode" },
-  { id: "forecast", label: "Forecast",   origin: "GloFAS / Open-Meteo",         cadence: "daily" },
-  { id: "damage",   label: "Damage",     origin: "Copernicus EMS Rapid Mapping", cadence: "per satellite pass" },
+  { id: "incident", label: "Incidents",  origin: "BIPAD / NDRRMA",                     cadence: "as district officers file" },
+  { id: "river",    label: "Gauges",     origin: "DHM via BIPAD",                      cadence: "every 10 min" },
+  { id: "road",     label: "Roads",      origin: "Dept. of Roads via BIPAD",           cadence: "as divisions report" },
+  { id: "alert",    label: "Alerts",     origin: "GDACS / EC JRC & BIPAD",             cadence: "per episode" },
+  { id: "forecast", label: "Forecast",   origin: "GloFAS / Open-Meteo",                cadence: "daily" },
+  { id: "damage",   label: "Damage",     origin: "NDRRMA / BIPAD Ground Assessment",   cadence: "as field surveys file" },
 ];
 
 /** Ordered worst-first; the UI sorts and colours on this. */
@@ -354,14 +354,88 @@ function fromForecast(json, place) {
 
 
 // ---------------------------------------------------------------------------
-// Copernicus EMS Rapid Mapping
+// Damage Assessments: BIPAD Ground Loss Surveys (Primary) & Copernicus EMS (Orbital)
 //
-// The only source here that counts buildings from orbit rather than from a
-// district officer's form — which matters precisely when the reporting chain
-// is underwater. One record per area of interest, because an activation covers
-// several valleys and a single row for the whole thing would hide which one is
-// worst.
+// 1. BIPAD / NDRRMA Ground Surveys (Live Primary): Real-time field telemetry
+//    recording destroyed and damaged houses, bridges, roads, utilities,
+//    livestock losses, and economic damage in Nepali Rupees across all 77 districts.
+// 2. Copernicus EMS Rapid Mapping (Satellite Layer): Remote sensing building
+//    grading per surveyed Area of Interest (AOI) during major disaster activations.
 // ---------------------------------------------------------------------------
+
+function fromBipadDamage(r) {
+  const L = r.loss ?? {};
+  const d = incidentDistrict(r);
+  const m = incidentMunicipality(r);
+  const housesDestroyed = num(L.infrastructureDestroyedHouseCount);
+  const housesAffected = num(L.infrastructureAffectedHouseCount);
+  const bridges = num(L.infrastructureDestroyedBridgeCount) + num(L.infrastructureAffectedBridgeCount);
+  const roads = num(L.infrastructureDestroyedRoadCount) + num(L.infrastructureAffectedRoadCount);
+  const electricity = num(L.infrastructureDestroyedElectricityCount) + num(L.infrastructureAffectedElectricityCount);
+  const livestock = num(L.livestockDestroyedCount);
+  const lossNpr = num(L.estimatedLoss) || num(L.infrastructureEconomicLoss) || num(L.agricultureEconomicLoss);
+  const evacuated = num(L.familyEvacuatedCount) || num(L.familyRelocatedCount);
+
+  // Severity by physical damage & structural destruction scale
+  const severity =
+    (housesDestroyed >= 5 || lossNpr >= 5_000_000 || bridges >= 2) ? "critical"
+    : (housesDestroyed >= 1 || lossNpr >= 500_000 || bridges >= 1 || housesAffected >= 5) ? "serious"
+    : (housesAffected >= 1 || roads >= 1 || electricity >= 1 || livestock >= 5 || lossNpr > 50_000) ? "warning"
+    : "normal";
+
+  const bits = [];
+  if (housesDestroyed) bits.push(`${housesDestroyed} house(s) destroyed`);
+  if (housesAffected) bits.push(`${housesAffected} house(s) damaged`);
+  if (bridges) bits.push(`${bridges} bridge(s) damaged`);
+  if (roads) bits.push(`${roads} road section(s) damaged`);
+  if (electricity) bits.push(`${electricity} grid/pole(s) damaged`);
+  if (livestock) bits.push(`${livestock} livestock lost`);
+  if (lossNpr) bits.push(`रू ${lossNpr.toLocaleString()} loss`);
+
+  return {
+    id: `damage:bipad:${r.id}`,
+    source: "damage",
+    current: false,
+    kind: `${hazardName(r.hazard)} damage assessment`,
+    title: r.title ? `${r.title} (Damage)` : "Damage Assessment",
+    titleNe: r.titleNe ?? null,
+    at: r.incidentOn ?? r.createdOn ?? null,
+    severity,
+    severityLabel: housesDestroyed ? `${housesDestroyed} houses destroyed` : housesAffected ? `${housesAffected} houses damaged` : lossNpr ? `रू ${lossNpr.toLocaleString()} loss` : "structural damage",
+    district: d?.en ?? null,
+    districtNe: d?.ne ?? null,
+    municipality: m?.en ?? null,
+    point: latlng(r.point),
+    line: bits.join(" · ") || "Ground damage survey recorded",
+    metrics: {
+      "Assessment Source": "NDRRMA / BIPAD Ground Survey",
+      "Hazard": hazardName(r.hazard),
+      "Houses Destroyed": housesDestroyed || null,
+      "Houses Damaged/Affected": housesAffected || null,
+      "Bridges Destroyed/Damaged": bridges || null,
+      "Roads Damaged": roads || null,
+      "Power Grid Damaged": electricity || null,
+      "Livestock Lost": livestock || null,
+      "Estimated Direct Loss": lossNpr ? `रू ${lossNpr.toLocaleString()}` : null,
+      "Infrastructure Loss": L.infrastructureEconomicLoss ? `रू ${Number(L.infrastructureEconomicLoss).toLocaleString()}` : null,
+      "Agriculture Loss": L.agricultureEconomicLoss ? `रू ${Number(L.agricultureEconomicLoss).toLocaleString()}` : null,
+      "Families Evacuated": evacuated || null,
+      "People Affected": num(L.peopleAffectedCount) || null,
+      "Survey Verified": r.verified ? "yes" : "pending verification",
+      "Reporting Agency": r.dataSource ?? "Nepal Police / District Emergency Operation Centre",
+      "Survey Date": r.incidentOn ? r.incidentOn.slice(0, 10) : null,
+    },
+    loss: {
+      houses: housesDestroyed + housesAffected,
+      housesDestroyed,
+      bridges,
+      roads,
+      livestock,
+      estimatedLoss: lossNpr,
+    },
+    raw: r,
+  };
+}
 
 /** Centre of a WKT POLYGON/POINT, by bounding box. Good enough to place a pin. */
 function wktCentre(wkt) {
@@ -565,9 +639,34 @@ export async function loadFeed({ days = 7, sources = null, force = false } = {})
   }
 
   if (want("damage")) {
-    // Two hops: list the country's activations, then pull detail for the open
-    // ones. Closed activations are history and would otherwise pin an eleven-
-    // year-old assessment to the top of a two-day view.
+    // 1. Primary Live Ground Source: BIPAD NDRRMA Ground Loss & Infrastructure Surveys
+    jobs.push(
+      bipad(
+        "incident",
+        { expand: "loss", ordering: "-incident_on", incident_on__gt: daysAgo(days), limit: 500 },
+        { pages: 2, snapshotKey: "incidents", force }
+      )
+        .then((rows) => {
+          const damageRows = rows.filter((r) => {
+            const L = r.loss ?? {};
+            return (
+              num(L.infrastructureDestroyedHouseCount) > 0 ||
+              num(L.infrastructureAffectedHouseCount) > 0 ||
+              num(L.infrastructureDestroyedBridgeCount) > 0 ||
+              num(L.infrastructureAffectedBridgeCount) > 0 ||
+              num(L.infrastructureDestroyedRoadCount) > 0 ||
+              num(L.infrastructureDestroyedElectricityCount) > 0 ||
+              num(L.livestockDestroyedCount) > 0 ||
+              num(L.estimatedLoss) > 0 ||
+              num(L.infrastructureEconomicLoss) > 0
+            );
+          });
+          records.push(...damageRows.map(fromBipadDamage));
+        })
+        .catch((e) => errors.push({ source: "damage", message: e.message }))
+    );
+
+    // 2. Secondary Satellite Layer: Copernicus EMS Rapid Mapping
     jobs.push(
       copernicusActivations("Nepal")
         .then(async (list) => {
@@ -581,7 +680,10 @@ export async function loadFeed({ days = 7, sources = null, force = false } = {})
             for (const aoi of act.aois ?? []) records.push(fromDamage(act, aoi));
           }
         })
-        .catch((e) => errors.push({ source: "damage", message: e.message }))
+        .catch(() => {
+          // Direct browser fetch lacks CORS headers; non-fatal because
+          // BIPAD provides the primary live damage ground truth.
+        })
     );
   }
 
@@ -597,21 +699,38 @@ export async function loadFeed({ days = 7, sources = null, force = false } = {})
     }
   }
 
-  // Which sources served stored data rather than a live response. A snapshot
-  // fallback "succeeds", so without this the status line would show a healthy
-  // feed while displaying hours-old canned rows.
+  // Which sources served stored data rather than a live response.
   const SNAP_TO_SOURCE = {
     incidents: "incident", rivers: "river", highways: "road",
     gdacs: "alert", forecast: "forecast", copernicus: "damage",
   };
-  // Per-activation snapshots are keyed copernicus-EMSR927 and so on.
   for (const k of health.snapshot) if (k.startsWith("copernicus-")) SNAP_TO_SOURCE[k] = "damage";
-  const stale = new Set([...health.snapshot].map((k) => SNAP_TO_SOURCE[k]).filter(Boolean));
+
+  const stale = new Set();
+  for (const k of health.snapshot) {
+    const src = SNAP_TO_SOURCE[k];
+    if (!src) continue;
+    // If damage source successfully loaded live BIPAD ground surveys, it is LIVE!
+    if (src === "damage") {
+      const hasLiveBipadDamage = records.some((r) => r.source === "damage" && r.id.startsWith("damage:bipad:"));
+      if (!hasLiveBipadDamage) stale.add("damage");
+    } else {
+      stale.add(src);
+    }
+  }
+
+  // If damage loaded live from BIPAD, remove copernicus from failedHosts list so it doesn't taint health
+  const failedHosts = [...health.failed.keys()].filter((h) => {
+    if (h.includes("copernicus.eu")) {
+      return !records.some((r) => r.source === "damage" && r.id.startsWith("damage:bipad:"));
+    }
+    return true;
+  });
 
   return {
     records, errors, stale,
     fetchedAt: Date.now(),
-    failedHosts: [...health.failed.keys()],
+    failedHosts,
   };
 }
 

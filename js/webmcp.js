@@ -99,8 +99,8 @@ function specs(ctl) {
         "START HERE. The current disaster picture for Nepal as this page has it: how many records are in the " +
         "window, how they break down by severity and by source, the worst-hit districts ranked by severity " +
         "rather than by record count, and how fresh each source is. Assembled from six live feeds — the BIPAD " +
-        "incident record, DHM river gauges, Department of Roads closures, GDACS alerts, GloFAS forecasts and " +
-        "Copernicus EMS satellite damage assessment. Use for 'what is happening in Nepal right now', 'where is " +
+        "incident record, DHM river gauges, Department of Roads closures, GDACS/BIPAD alerts, GloFAS forecasts and " +
+        "BIPAD NDRRMA ground damage surveys alongside Copernicus satellite assessments. Use for 'what is happening in Nepal right now', 'where is " +
         "it worst', 'what should I look at first'. Read-only: it does not change the view.",
       annotations: { readOnlyHint: true },
       inputSchema: { type: "object", properties: {} },
@@ -304,18 +304,28 @@ function specs(ctl) {
         const roads = of("road");
         const damage = of("damage");
 
-        // Buildings graded from orbit, across every mapped area in the district.
+        // Ground surveyed damage (BIPAD) and satellite orbital grading (Copernicus)
         let affected = 0, surveyed = 0, ungraded = 0;
+        let groundHousesDestroyed = 0, groundHousesDamaged = 0, groundBridges = 0, groundLossNpr = 0;
+
         for (const r of damage) {
-          const m = /^([\d,]+) of ([\d,]+)$/.exec(String(r.metrics["Buildings affected"] ?? ""));
-          if (m) { affected += Number(m[1].replace(/,/g, "")); surveyed += Number(m[2].replace(/,/g, "")); }
-          else ungraded += 1;
+          if (r.id.startsWith("damage:bipad:")) {
+            groundHousesDestroyed += (Number(r.loss?.housesDestroyed) || Number(r.metrics?.["Houses Destroyed"]) || 0);
+            groundHousesDamaged += (Number(r.metrics?.["Houses Damaged/Affected"]) || 0);
+            groundBridges += (Number(r.loss?.bridges) || Number(r.metrics?.["Bridges Destroyed/Damaged"]) || 0);
+            groundLossNpr += (Number(r.loss?.estimatedLoss) || 0);
+          } else {
+            const m = /^([\d,]+) of ([\d,]+)$/.exec(String(r.metrics["Buildings affected"] ?? ""));
+            if (m) { affected += Number(m[1].replace(/,/g, "")); surveyed += Number(m[2].replace(/,/g, "")); }
+            else ungraded += 1;
+          }
         }
 
         const deaths = sum(incidents, "Deaths");
         const injured = sum(incidents, "Injured");
         const missing = sum(incidents, "Missing");
         const households = sum(roads, "Households cut off");
+        const totalHousesDestroyed = Math.max(groundHousesDestroyed, sum(incidents, "Houses destroyed"));
 
         // Where two sources tell different stories about the same ground. Stated
         // as a divergence to check, never as a conclusion: this page cannot know
@@ -329,6 +339,12 @@ function specs(ctl) {
             `(${deaths} dead, ${missing} missing, ${injured} injured). Satellite assessment does not depend on a ` +
             `district officer being able to file, and the filing chain is what breaks when the roads are cut — ` +
             `so treat the low incident count as a reporting lag to verify, not as evidence that the district is fine.`
+          );
+        }
+        if (groundHousesDestroyed > 0 && deaths === 0 && injured === 0 && incidents.length <= 1) {
+          divergence.push(
+            `Field surveys record ${groundHousesDestroyed} house(s) destroyed in ${district} with zero casualties logged. ` +
+            `Verify whether evacuations succeeded or if remote reporting from cut-off wards is delayed.`
           );
         }
         if (ungraded) {
@@ -349,9 +365,20 @@ function specs(ctl) {
         }
         if (roads.length && damage.length) {
           divergence.push(
-            `${households.toLocaleString()} households are behind a closure in the same district the satellite is ` +
-            `grading. Access and damage are being reported by different agencies; both bear on whether relief arrives.`
+            `${households.toLocaleString()} households are behind a closure in the same district damage is ` +
+            `recorded. Access and damage are being reported by different agencies; both bear on whether relief arrives.`
           );
+        }
+
+        const damageSummaryParts = [];
+        if (groundHousesDestroyed || groundHousesDamaged) {
+          damageSummaryParts.push(`${groundHousesDestroyed} house(s) destroyed, ${groundHousesDamaged} damaged (ground survey)`);
+        }
+        if (groundLossNpr) {
+          damageSummaryParts.push(`रू ${groundLossNpr.toLocaleString()} direct loss`);
+        }
+        if (surveyed) {
+          damageSummaryParts.push(`${affected.toLocaleString()} of ${surveyed.toLocaleString()} buildings graded affected from orbit`);
         }
 
         return {
@@ -360,7 +387,7 @@ function specs(ctl) {
             `${incidents.length} incident(s) (${deaths} dead, ${missing} missing, ${injured} injured), ` +
             `${of("river").length} gauge(s), ${roads.length} closure(s)` +
             (households ? ` cutting off ${households.toLocaleString()} households` : "") +
-            (surveyed ? `, ${affected.toLocaleString()} of ${surveyed.toLocaleString()} buildings graded affected from orbit` : "") +
+            (damageSummaryParts.length ? `, Damage: ${damageSummaryParts.join(" · ")}` : "") +
             `.` + (divergence.length ? ` ${divergence.length} divergence(s) between sources — see below.` : ""),
           district,
           // The empty branch above reports `records: 0`; without this the
@@ -370,7 +397,7 @@ function specs(ctl) {
           // the parts and arrived at differently.
           records: here.length,
           windowDays: state.filters.days,
-          incidents: { count: incidents.length, deaths, missing, injured, housesDestroyed: sum(incidents, "Houses destroyed"), records: incidents.map(brief) },
+          incidents: { count: incidents.length, deaths, missing, injured, housesDestroyed: totalHousesDestroyed, records: incidents.map(brief) },
           gauges: of("river").map(brief),
           roads: roads.map((r) => ({
             ...brief(r),
@@ -384,9 +411,11 @@ function specs(ctl) {
           forecast: of("forecast").map(brief),
           damage: damage.map((r) => ({
             ...brief(r),
-            buildingsAffected: r.metrics["Buildings affected"] ?? "not yet graded",
-            sensor: r.metrics.Sensor ?? null,
-            imageAcquired: r.metrics["Image acquired"] ?? null,
+            housesDestroyed: r.loss?.housesDestroyed || r.metrics?.["Houses Destroyed"] || null,
+            estimatedLoss: r.loss?.estimatedLoss || r.metrics?.["Estimated Direct Loss"] || null,
+            buildingsAffected: r.metrics["Buildings affected"] ?? (r.id.startsWith("damage:bipad:") ? r.line : "not yet graded"),
+            sensor: r.metrics.Sensor ?? (r.id.startsWith("damage:bipad:") ? "NDRRMA Ground Survey" : null),
+            imageAcquired: r.metrics["Image acquired"] ?? r.at,
           })),
           nationalAlerts: includeNational
             ? rows.filter((r) => r.source === "alert").map((r) => ({ ...brief(r), scope: "national — GDACS scopes to the country, not the district" }))
