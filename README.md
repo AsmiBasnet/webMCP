@@ -1,7 +1,7 @@
 # Nepal Disaster Watch · नेपाल विपद् वाच
 
 > 🚨 **WebMCP Hackathon Submission**: The primary live project is in [`public/`](public/).
-> - **Live Deployed App**: [https://nepal-disaster-watch.pages.dev](https://nepal-disaster-watch.pages.dev)
+> - **Live Deployed App**: [https://asmibasnet.github.io/webMCP/](https://asmibasnet.github.io/webMCP/)
 > - **Local Run**: `npm run serve` (Serves `public/` at `http://127.0.0.1:8787/`)
 > - **Deploy Command**: `npm run deploy` (`npx wrangler pages deploy ./public`)
 > - **Automated Test Suites**: `npm run test:webmcp` (55 tests) · `npm run test:dash` · `npm run test:offline`
