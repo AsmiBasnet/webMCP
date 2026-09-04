@@ -2,6 +2,7 @@
 
 > 🚨 **WebMCP Hackathon Submission**: The primary live project is in [`public/`](public/).
 > - **Live Deployed App**: [https://asmibasnet.github.io/webMCP/](https://asmibasnet.github.io/webMCP/)
+> - **Video Demo (YouTube)**: [https://youtu.be/_hlxLnZ7Lgs](https://youtu.be/_hlxLnZ7Lgs)
 > - **Local Run**: `npm run serve` (Serves `public/` at `http://127.0.0.1:8787/`)
 > - **Deploy Command**: `npm run deploy` (`npx wrangler pages deploy ./public`)
 > - **Automated Test Suites**: `npm run test:webmcp` (55 tests) · `npm run test:dash` · `npm run test:offline`

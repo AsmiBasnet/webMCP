@@ -4,7 +4,7 @@ Research and design docs for **Nepal Disaster Watch** (नेपाल विप
 
 > **BIPAD collects it. Nepal Disaster Watch makes it answerable.**
 
-Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Devpost, 2026).
+Submission for the [WebMCP Challenge](https://webmcp.devpost.com/) (OpenAI / Devpost, 2026) · [Video Demo (YouTube)](https://youtu.be/_hlxLnZ7Lgs).
 
 ---
 
